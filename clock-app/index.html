@@ -3,8 +3,64 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>圆形时钟</title>
+  <title>圆形时钟 - 在线时钟、秒表、倒计时、时区转换工具</title>
+  <meta name="description" content="免费在线圆形时钟工具，支持实时时钟显示、秒表计时、倒计时和全球时区转换。支持深色模式、中英文切换、12/24小时制切换，界面简洁美观。" />
+  <meta name="keywords" content="圆形时钟,在线时钟,秒表,倒计时,时区转换,实时时钟,免费工具,digital clock,stopwatch,countdown timer,timezone converter" />
+  <meta name="author" content="ClockArt" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#1a1a2e" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="圆形时钟 - 在线时钟、秒表、倒计时、时区转换工具" />
+  <meta property="og:description" content="免费在线圆形时钟工具，支持实时时钟显示、秒表计时、倒计时和全球时区转换。支持深色模式、中英文切换。" />
+  <meta property="og:url" content="https://clockart.pages.dev/" />
+  <meta property="og:site_name" content="ClockArt" />
+  <meta property="og:locale" content="zh_CN" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="圆形时钟 - 在线时钟、秒表、倒计时、时区转换工具" />
+  <meta name="twitter:description" content="免费在线圆形时钟工具，支持实时时钟显示、秒表计时、倒计时和全球时区转换。" />
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://clockart.pages.dev/" />
+
+  <!-- Alternate language -->
+  <link rel="alternate" hreflang="zh-CN" href="https://clockart.pages.dev/" />
+  <link rel="alternate" hreflang="en" href="https://clockart.pages.dev/" />
+  <link rel="alternate" hreflang="x-default" href="https://clockart.pages.dev/" />
+
   <link rel="stylesheet" href="/src/style.css" />
+
+  <!-- Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "ClockArt - 圆形时钟",
+    "alternateName": "ClockArt - Circular Clock",
+    "description": "免费在线圆形时钟工具，支持实时时钟显示、秒表计时、倒计时和全球时区转换。",
+    "url": "https://clockart.pages.dev/",
+    "applicationCategory": "UtilityApplication",
+    "operatingSystem": "All",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "CNY"
+    },
+    "featureList": [
+      "实时圆形时钟显示",
+      "秒表计时功能",
+      "倒计时功能",
+      "全球时区转换",
+      "深色/浅色主题切换",
+      "中英文双语支持",
+      "12/24小时制切换"
+    ],
+    "inLanguage": ["zh-CN", "en"]
+  }
+  </script>
 </head>
 <body>
   <div id="app">
@@ -16,18 +72,29 @@
     </header>
 
     <main>
-      <canvas id="clock-canvas"></canvas>
+      <noscript>
+        <h2>ClockArt - 免费在线圆形时钟工具</h2>
+        <p>ClockArt 是一款免费在线时钟工具，提供以下功能：</p>
+        <ul>
+          <li><strong>圆形时钟</strong> - 显示当前本地时间，支持深色/浅色主题</li>
+          <li><strong>秒表计时</strong> - 精确到毫秒的秒表功能，支持计次记录</li>
+          <li><strong>倒计时</strong> - 自定义时分秒的倒计时器</li>
+          <li><strong>时区转换</strong> - 查看全球各时区的当前时间</li>
+        </ul>
+        <p>请启用 JavaScript 以使用完整的时钟功能。</p>
+      </noscript>
+      <canvas id="clock-canvas" role="img" aria-label="圆形实时时钟"></canvas>
       
       <div id="timezone-display" class="info-text"></div>
 
-      <nav id="tab-nav">
-        <button class="tab-btn active" data-tab="clock" data-i18n="tabClock">时钟</button>
-        <button class="tab-btn" data-tab="stopwatch" data-i18n="tabStopwatch">秒表</button>
-        <button class="tab-btn" data-tab="countdown" data-i18n="tabCountdown">倒计时</button>
-        <button class="tab-btn" data-tab="timezone" data-i18n="tabTimezone">时区</button>
+      <nav id="tab-nav" role="tablist" aria-label="功能选项卡">
+        <button class="tab-btn active" data-tab="clock" data-i18n="tabClock" role="tab" aria-selected="true" aria-controls="clock-panel">时钟</button>
+        <button class="tab-btn" data-tab="stopwatch" data-i18n="tabStopwatch" role="tab" aria-selected="false" aria-controls="stopwatch-panel">秒表</button>
+        <button class="tab-btn" data-tab="countdown" data-i18n="tabCountdown" role="tab" aria-selected="false" aria-controls="countdown-panel">倒计时</button>
+        <button class="tab-btn" data-tab="timezone" data-i18n="tabTimezone" role="tab" aria-selected="false" aria-controls="timezone-panel">时区</button>
       </nav>
 
-      <section id="clock-panel" class="panel active">
+      <section id="clock-panel" class="panel active" role="tabpanel" aria-labelledby="tab-clock">
         <div class="panel-content">
           <p data-i18n="clockPanelDesc">当前显示本地系统时间</p>
           <div class="size-control">
@@ -38,7 +105,7 @@
         </div>
       </section>
 
-      <section id="stopwatch-panel" class="panel">
+      <section id="stopwatch-panel" class="panel" role="tabpanel" aria-labelledby="tab-stopwatch">
         <div class="panel-content">
           <div id="stopwatch-display" class="digital-display">00:00:00.00</div>
           <div class="btn-group">
@@ -50,7 +117,7 @@
         </div>
       </section>
 
-      <section id="countdown-panel" class="panel">
+      <section id="countdown-panel" class="panel" role="tabpanel" aria-labelledby="tab-countdown">
         <div class="panel-content">
           <div id="countdown-display" class="digital-display">00:00:00</div>
           <div class="countdown-inputs">
@@ -74,7 +141,7 @@
         </div>
       </section>
 
-      <section id="timezone-panel" class="panel">
+      <section id="timezone-panel" class="panel" role="tabpanel" aria-labelledby="tab-timezone">
         <div class="panel-content">
           <div id="timezone-list" class="timezone-list"></div>
         </div>

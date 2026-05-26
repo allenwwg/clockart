@@ -190,7 +190,8 @@ function getThemeColors(): ThemeConfig {
 
 // Initialize canvas size
 function initCanvas(): void {
-  const size = Math.min(clockSize, window.innerWidth - 40);
+  const maxWidth = window.innerWidth - 40;
+  const size = Math.min(clockSize, maxWidth);
   cachedCanvasSize = size;
   const dpr = window.devicePixelRatio || 1;
   canvas.width = size * dpr;

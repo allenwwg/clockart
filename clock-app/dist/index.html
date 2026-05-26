@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>圆形时钟</title>
-  <script type="module" crossorigin src="/assets/index-Dw5pPt18.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-C_rwDl8b.css">
+  <script type="module" crossorigin src="/assets/index-ObgFkcUd.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-UbSeER-M.css">
 </head>
 <body>
   <div id="app">
@@ -31,6 +31,11 @@
       <section id="clock-panel" class="panel active">
         <div class="panel-content">
           <p data-i18n="clockPanelDesc">当前显示本地系统时间</p>
+          <div class="size-control">
+            <label for="clock-size-slider" data-i18n="clockSizeLabel">时钟大小</label>
+            <input type="range" id="clock-size-slider" min="200" max="800" value="400" step="10" />
+            <span id="clock-size-value">400</span><span> px</span>
+          </div>
         </div>
       </section>
 

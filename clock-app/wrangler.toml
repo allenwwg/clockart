@@ -1,0 +1,6 @@
+[pages]
+project = "clockart"
+
+[build]
+command = "npm run build"
+output_directory = "dist"

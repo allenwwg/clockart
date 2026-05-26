@@ -1,7 +1,14 @@
 {
-  "devDependencies": {
-    "typescript": "^6.0.3",
-    "vite": "^8.0.14",
-    "wrangler": "^4.94.0"
+  "name": "clockart",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "clock-app"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w clock-app",
+    "build": "npm run build -w clock-app",
+    "preview": "npm run preview -w clock-app",
+    "deploy": "npm run deploy -w clock-app"
   }
 }

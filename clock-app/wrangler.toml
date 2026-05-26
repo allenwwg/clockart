@@ -3,4 +3,4 @@ project = "clockart"
 
 [build]
 command = "npm run build"
-output_directory = "dist"
+output_directory = "clock-app/dist"

@@ -20,7 +20,43 @@ interface TimezoneInfo {
 let currentTheme: string = 'light';
 let is24Hour: boolean = true;
 let selectedTimezone: string = 'local';
-let clockSize: number = 300;
+let clockSize: number = 480;
+let cachedCanvasSize: number = 0;
+
+// Cached Intl formatters for performance
+const intlFormatterCache: Map<string, Intl.DateTimeFormat> = new Map();
+const timezoneListFormatterCache: Map<string, Intl.DateTimeFormat> = new Map();
+
+function getClockIntlFormatter(timezone: string): Intl.DateTimeFormat {
+  const key = `${timezone}_clock`;
+  if (!intlFormatterCache.has(key)) {
+    intlFormatterCache.set(key, new Intl.DateTimeFormat('zh-CN', {
+      timeZone: timezone,
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      weekday: 'short',
+    }));
+  }
+  return intlFormatterCache.get(key)!;
+}
+
+function getTimezoneListFormatter(timezone: string, hour12: boolean): Intl.DateTimeFormat {
+  const key = `${timezone}_list_${hour12 ? '12' : '24'}`;
+  if (!timezoneListFormatterCache.has(key)) {
+    timezoneListFormatterCache.set(key, new Intl.DateTimeFormat('zh-CN', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12,
+    }));
+  }
+  return timezoneListFormatterCache.get(key)!;
+}
 
 
 // Stopwatch state
@@ -46,7 +82,6 @@ const timezoneDisplay = document.getElementById('timezone-display') as HTMLDivEl
 const tabBtns = document.querySelectorAll('.tab-btn');
 const panels = document.querySelectorAll('.panel');
 const sizeSlider = document.getElementById('clock-size-slider') as HTMLInputElement;
-const sizeLabel = document.getElementById('clock-size-value') as HTMLSpanElement;
 
 // Stopwatch elements
 const swDisplay = document.getElementById('stopwatch-display') as HTMLDivElement;
@@ -133,6 +168,11 @@ function loadPreferences(): void {
   if (savedSize) {
     clockSize = parseInt(savedSize, 10);
   }
+
+  const savedTab = localStorage.getItem('clock-tab');
+  if (savedTab) {
+    switchTab(savedTab);
+  }
 }
 
 // Get theme colors
@@ -151,17 +191,25 @@ function getThemeColors(): ThemeConfig {
 // Initialize canvas size
 function initCanvas(): void {
   const size = Math.min(clockSize, window.innerWidth - 40);
+  cachedCanvasSize = size;
   const dpr = window.devicePixelRatio || 1;
   canvas.width = size * dpr;
   canvas.height = size * dpr;
   canvas.style.width = `${size}px`;
   canvas.style.height = `${size}px`;
-  ctx.scale(dpr, dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+// Cached timezone lookup to avoid .find() every frame
+let cachedSelectedTz: TimezoneInfo | undefined;
+
+function updateCachedTimezone(): void {
+  cachedSelectedTz = timezones.find(tz => tz.zone === selectedTimezone);
 }
 
 // Draw the analog clock
 function drawClock(date: Date): void {
-  const size = parseInt(canvas.style.width);
+  const size = cachedCanvasSize;
   const centerX = size / 2;
   const centerY = size / 2;
   const radius = size / 2 - 10;
@@ -238,17 +286,7 @@ function drawClock(date: Date): void {
     displayDate = date.getDate();
     displayWeekday = date.getDay();
   } else {
-    const options: Intl.DateTimeFormatOptions = {
-      timeZone: selectedTimezone,
-      hour: 'numeric',
-      minute: 'numeric',
-      second: 'numeric',
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      weekday: 'short',
-    };
-    const formatter = new Intl.DateTimeFormat('zh-CN', options);
+    const formatter = getClockIntlFormatter(selectedTimezone);
     const parts = formatter.formatToParts(date);
     const getPart = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0');
     hours = getPart('hour');
@@ -257,9 +295,7 @@ function drawClock(date: Date): void {
     displayYear = getPart('year');
     displayMonth = getPart('month') - 1;
     displayDate = getPart('day');
-    // weekday from Intl is abbreviated, approximate it
     displayWeekday = date.getDay();
-    // For smooth second hand, use the current milliseconds from local date
     ms = date.getMilliseconds();
   }
 
@@ -330,12 +366,11 @@ function drawClock(date: Date): void {
   ctx.textBaseline = 'middle';
   ctx.fillText(dateStr, centerX, centerY + radius * 0.35);
 
-  // Update timezone display
+  // Update timezone display using cached lookup
   if (selectedTimezone === 'local') {
     timezoneDisplay.textContent = t('localTimeLabel');
   } else {
-    const tz = timezones.find(tz => tz.zone === selectedTimezone);
-    timezoneDisplay.textContent = tz ? `${t('timezoneDisplayLabel')} ${getTimezoneName(tz.name)} (${tz.offset})` : '';
+    timezoneDisplay.textContent = cachedSelectedTz ? `${t('timezoneDisplayLabel')} ${getTimezoneName(cachedSelectedTz.name)} (${cachedSelectedTz.offset})` : '';
   }
 }
 
@@ -384,20 +419,27 @@ formatBtn.addEventListener('click', (): void => {
   is24Hour = !is24Hour;
   formatBtn.textContent = is24Hour ? '24H' : '12H';
   localStorage.setItem('clock-format', is24Hour ? '24' : '12');
+  // Clear timezone list formatter cache since hour12 changed
+  timezoneListFormatterCache.clear();
+  renderTimezones();
 });
 
 // Tab switching
+function switchTab(tab: string): void {
+  tabBtns.forEach(b => b.classList.remove('active'));
+  panels.forEach(p => p.classList.remove('active'));
+  const targetBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if (targetBtn) targetBtn.classList.add('active');
+  const panel = document.getElementById(`${tab}-panel`);
+  if (panel) panel.classList.add('active');
+}
+
 tabBtns.forEach(btn => {
   btn.addEventListener('click', (): void => {
     const tab = btn.getAttribute('data-tab');
     if (!tab) return;
-    
-    tabBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    panels.forEach(p => p.classList.remove('active'));
-    
-    const panel = document.getElementById(`${tab}-panel`);
-    if (panel) panel.classList.add('active');
+    switchTab(tab);
+    localStorage.setItem('clock-tab', tab);
   });
 });
 
@@ -534,14 +576,8 @@ function renderTimezones(): void {
         timeStr = `${String(hour12).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} ${ampm}`;
       }
     } else {
-      const options: Intl.DateTimeFormatOptions = {
-        timeZone: tz.zone,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: !is24Hour,
-      };
-      timeStr = new Intl.DateTimeFormat('zh-CN', options).format(now);
+      const formatter = getTimezoneListFormatter(tz.zone, !is24Hour);
+      timeStr = formatter.format(now);
     }
 
     item.innerHTML = `
@@ -555,6 +591,7 @@ function renderTimezones(): void {
     item.addEventListener('click', (): void => {
       selectedTimezone = tz.zone;
       localStorage.setItem('clock-timezone', tz.zone);
+      updateCachedTimezone();
       renderTimezones();
     });
 
@@ -565,9 +602,14 @@ function renderTimezones(): void {
 // Update timezone list every second
 setInterval(renderTimezones, 1000);
 
-// Handle window resize
+// Handle window resize with debounce
+let resizeTimer: number | null = null;
 window.addEventListener('resize', (): void => {
-  initCanvas();
+  if (resizeTimer) cancelAnimationFrame(resizeTimer);
+  resizeTimer = requestAnimationFrame((): void => {
+    initCanvas();
+    resizeTimer = null;
+  });
 });
 
 // Update all UI text when language changes
@@ -638,7 +680,6 @@ function updateUILanguage(): void {
 // Clock size slider handler
 sizeSlider.addEventListener('input', (): void => {
   clockSize = parseInt(sizeSlider.value, 10);
-  sizeLabel.textContent = `${clockSize}px`;
   localStorage.setItem('clock-size', clockSize.toString());
   initCanvas();
 });
@@ -655,8 +696,8 @@ if (langBtn) {
 loadLanguage();
 loadPreferences();
 sizeSlider.value = clockSize.toString();
-sizeLabel.textContent = `${clockSize}px`;
 initCanvas();
+updateCachedTimezone();
 renderTimezones();
 updateUILanguage();
 animate();

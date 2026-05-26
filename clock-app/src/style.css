@@ -42,16 +42,23 @@
   --input-border: #444;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: var(--bg-color);
   color: var(--text-color);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding: 20px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
   transition: background-color 0.3s, color 0.3s;
+  overflow-x: hidden;
 }
 
 #app {
@@ -60,6 +67,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding-top: env(safe-area-inset-top);
 }
 
 header {
@@ -68,11 +76,18 @@ header {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  gap: 8px;
 }
 
 header h1 {
   font-size: 1.5rem;
   font-weight: 600;
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .control-btn {
@@ -84,16 +99,29 @@ header h1 {
   cursor: pointer;
   font-size: 1rem;
   transition: background-color 0.2s;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .control-btn:hover {
   background: var(--btn-hover);
 }
 
+.control-btn:active {
+  transform: scale(0.95);
+}
+
 #clock-canvas {
   border-radius: 50%;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   max-width: 100%;
+  height: auto !important;
 }
 
 .info-text {
@@ -101,11 +129,13 @@ header h1 {
   font-size: 0.9rem;
   color: var(--text-color);
   opacity: 0.7;
+  text-align: center;
+  word-break: break-word;
 }
 
 #tab-nav {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-top: 25px;
   width: 100%;
   justify-content: center;
@@ -122,6 +152,13 @@ header h1 {
   transition: all 0.2s;
   flex: 1;
   max-width: 100px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  white-space: nowrap;
 }
 
 .tab-btn.active {
@@ -132,6 +169,10 @@ header h1 {
 
 .tab-btn:hover:not(.active) {
   background: var(--display-bg);
+}
+
+.tab-btn:active {
+  transform: scale(0.95);
 }
 
 .panel {
@@ -159,6 +200,7 @@ header h1 {
   margin-bottom: 20px;
   color: var(--display-color);
   letter-spacing: 2px;
+  word-break: break-all;
 }
 
 .btn-group {
@@ -166,6 +208,7 @@ header h1 {
   gap: 10px;
   justify-content: center;
   margin-bottom: 15px;
+  flex-wrap: wrap;
 }
 
 .action-btn {
@@ -178,10 +221,20 @@ header h1 {
   font-size: 1rem;
   transition: background-color 0.2s;
   min-width: 80px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .action-btn:hover {
   background: var(--btn-hover);
+}
+
+.action-btn:active {
+  transform: scale(0.95);
 }
 
 .action-btn:disabled {
@@ -217,12 +270,22 @@ header h1 {
   border-radius: 8px;
   background: var(--input-bg);
   color: var(--text-color);
+  min-height: 44px;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+
+.input-group input::-webkit-inner-spin-button,
+.input-group input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .data-list {
   max-height: 200px;
   overflow-y: auto;
   margin-top: 10px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .data-list-item {
@@ -251,11 +314,18 @@ header h1 {
   border-radius: 8px;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  min-height: 44px;
 }
 
 .timezone-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.timezone-item:active {
+  transform: scale(0.98);
 }
 
 .timezone-item.active {
@@ -274,6 +344,8 @@ header h1 {
 .timezone-time {
   font-family: 'Courier New', monospace;
   font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-left: 10px;
 }
 
 .panel-content p {
@@ -283,46 +355,94 @@ header h1 {
 
 .size-control {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  justify-content: center;
   padding: 15px 0;
-}
-
-.size-control label {
-  font-size: 0.95rem;
-  font-weight: 500;
 }
 
 .size-control input[type="range"] {
   width: 100%;
   max-width: 300px;
   cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 44px;
+  background: transparent;
 }
 
-.size-control span {
-  font-family: 'Courier New', monospace;
-  font-size: 1rem;
-  font-weight: bold;
+.size-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--btn-bg);
+  cursor: pointer;
+  border: none;
 }
 
-@media (max-width: 480px) {
-  #app {
-    max-width: 100%;
-    padding: 0 10px;
+.size-control input[type="range"]::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--btn-bg);
+  cursor: pointer;
+  border: none;
+}
+
+/* Mobile: up to 600px */
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
   }
 
-  .digital-display {
-    font-size: 2rem;
+  #app {
+    max-width: 100%;
+  }
+
+  header {
+    margin-bottom: 12px;
   }
 
   header h1 {
     font-size: 1.2rem;
   }
 
+  .control-btn {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    min-width: 40px;
+  }
+
+  #tab-nav {
+    margin-top: 15px;
+    gap: 4px;
+  }
+
   .tab-btn {
-    padding: 8px 12px;
-    font-size: 0.85rem;
+    padding: 10px 8px;
+    font-size: 0.82rem;
+    max-width: none;
+  }
+
+  .panel {
+    margin-top: 12px;
+    padding: 15px 12px;
+  }
+
+  .digital-display {
+    font-size: 2rem;
+    padding: 15px 10px;
+    letter-spacing: 1px;
+  }
+
+  .btn-group {
+    gap: 8px;
+  }
+
+  .action-btn {
+    padding: 10px 14px;
+    min-width: 70px;
+    font-size: 0.9rem;
   }
 
   .countdown-inputs {
@@ -332,5 +452,128 @@ header h1 {
   .input-group input {
     width: 60px;
     padding: 8px;
+    font-size: 1.1rem;
+  }
+
+  .timezone-item {
+    padding: 10px 12px;
+  }
+
+  .timezone-name {
+    font-size: 0.9rem;
+  }
+
+  .timezone-time {
+    font-size: 1rem;
+  }
+}
+
+/* Small phones: up to 375px */
+@media (max-width: 375px) {
+  body {
+    padding: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  header h1 {
+    font-size: 1.05rem;
+  }
+
+  .control-btn {
+    padding: 6px 8px;
+    font-size: 0.85rem;
+    min-width: 36px;
+    min-height: 40px;
+  }
+
+  .tab-btn {
+    padding: 8px 4px;
+    font-size: 0.78rem;
+    min-height: 40px;
+  }
+
+  .digital-display {
+    font-size: 1.6rem;
+    padding: 12px 8px;
+  }
+
+  .action-btn {
+    padding: 8px 10px;
+    min-width: 60px;
+    font-size: 0.85rem;
+    min-height: 40px;
+  }
+
+  .countdown-inputs {
+    gap: 6px;
+  }
+
+  .input-group input {
+    width: 52px;
+    padding: 6px;
+    font-size: 1rem;
+  }
+
+  .input-group label {
+    font-size: 0.78rem;
+  }
+
+  .timezone-item {
+    padding: 8px 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .timezone-time {
+    margin-left: 0;
+    align-self: flex-end;
+    font-size: 0.95rem;
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  body {
+    padding: 8px 15px;
+  }
+
+  header {
+    margin-bottom: 8px;
+  }
+
+  header h1 {
+    font-size: 1rem;
+  }
+
+  #tab-nav {
+    margin-top: 8px;
+  }
+
+  .panel {
+    margin-top: 8px;
+    padding: 10px;
+  }
+
+  .digital-display {
+    font-size: 1.5rem;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+}
+
+/* Touch device specific */
+@media (hover: none) and (pointer: coarse) {
+  .timezone-item:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .control-btn:hover {
+    background: var(--btn-bg);
+  }
+
+  .action-btn:hover {
+    background: var(--btn-bg);
   }
 }

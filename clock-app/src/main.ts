@@ -613,8 +613,22 @@ window.addEventListener('resize', (): void => {
   });
 });
 
+// Map internal language codes to HTML lang attribute values
+const langToHtmlLang: Record<string, string> = {
+  zh: 'zh-CN',
+  en: 'en',
+  ja: 'ja',
+  ko: 'ko',
+};
+
 // Update all UI text when language changes
 function updateUILanguage(): void {
+  // Update page title
+  document.title = t('pageTitle');
+
+  // Update HTML lang attribute
+  document.documentElement.lang = langToHtmlLang[getLanguage()] || 'zh-CN';
+
   // Update all elements with data-i18n attribute
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');

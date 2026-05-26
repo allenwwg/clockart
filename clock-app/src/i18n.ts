@@ -3,6 +3,7 @@
 export interface Translations {
   // Page title
   title: string;
+  pageTitle: string;
   appTitle: string;
   
   // Tab labels
@@ -57,6 +58,7 @@ export interface Translations {
 const translations: Record<string, Translations> = {
   zh: {
     title: '圆形时钟',
+    pageTitle: '圆形时钟 - 在线时钟、秒表、倒计时、时区转换工具',
     appTitle: '圆形时钟',
     clockPanelDesc: '当前显示本地系统时间',
     clockSizeLabel: '时钟大小',
@@ -95,6 +97,7 @@ const translations: Record<string, Translations> = {
   },
   en: {
     title: 'Round Clock',
+    pageTitle: 'Round Clock - Online Clock, Stopwatch, Countdown & Timezone Tool',
     appTitle: 'Round Clock',
     clockPanelDesc: 'Displaying local system time',
     clockSizeLabel: 'Clock Size',
@@ -133,6 +136,7 @@ const translations: Record<string, Translations> = {
   },
   ja: {
     title: '丸時計',
+    pageTitle: '丸時計 - オンライン時計、ストップウォッチ、カウントダウン、タイムゾーンツール',
     appTitle: '丸時計',
     clockPanelDesc: 'ローカルシステム時刻を表示中',
     clockSizeLabel: '時計サイズ',
@@ -171,6 +175,7 @@ const translations: Record<string, Translations> = {
   },
   ko: {
     title: '원형 시계',
+    pageTitle: '원형 시계 - 온라인 시계, 스톱워치, 카운트다운, 시간대 도구',
     appTitle: '원형 시계',
     clockPanelDesc: '로컬 시스템 시간 표시 중',
     clockSizeLabel: '시계 크기',

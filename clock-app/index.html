@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>圆形时钟</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <button id="theme-btn" class="control-btn" title="切换主题">🌙</button>
+      <button id="format-btn" class="control-btn" title="切换12/24小时制">24H</button>
+      <button id="lang-btn" class="control-btn" title="切换语言">🇨🇳</button>
+      <h1 data-i18n="appTitle">圆形时钟</h1>
+    </header>
+
+    <main>
+      <canvas id="clock-canvas"></canvas>
+      
+      <div id="timezone-display" class="info-text"></div>
+
+      <nav id="tab-nav">
+        <button class="tab-btn active" data-tab="clock" data-i18n="tabClock">时钟</button>
+        <button class="tab-btn" data-tab="stopwatch" data-i18n="tabStopwatch">秒表</button>
+        <button class="tab-btn" data-tab="countdown" data-i18n="tabCountdown">倒计时</button>
+        <button class="tab-btn" data-tab="timezone" data-i18n="tabTimezone">时区</button>
+      </nav>
+
+      <section id="clock-panel" class="panel active">
+        <div class="panel-content">
+          <p data-i18n="clockPanelDesc">当前显示本地系统时间</p>
+          <div class="size-control">
+            <label for="clock-size-slider" data-i18n="clockSizeLabel">时钟大小</label>
+            <input type="range" id="clock-size-slider" min="200" max="800" value="400" step="10" />
+            <span id="clock-size-value">400</span><span> px</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="stopwatch-panel" class="panel">
+        <div class="panel-content">
+          <div id="stopwatch-display" class="digital-display">00:00:00.00</div>
+          <div class="btn-group">
+             <button id="sw-start" class="action-btn" data-i18n="swStart">启动</button>
+             <button id="sw-lap" class="action-btn" data-i18n="swLap">计次</button>
+             <button id="sw-reset" class="action-btn" data-i18n="swReset">重置</button>
+          </div>
+          <div id="lap-list" class="data-list"></div>
+        </div>
+      </section>
+
+      <section id="countdown-panel" class="panel">
+        <div class="panel-content">
+          <div id="countdown-display" class="digital-display">00:00:00</div>
+          <div class="countdown-inputs">
+            <div class="input-group">
+               <label data-i18n="cdHoursLabel">时</label>
+               <input type="number" id="cd-hours" min="0" max="99" value="0" />
+             </div>
+             <div class="input-group">
+               <label data-i18n="cdMinutesLabel">分</label>
+               <input type="number" id="cd-minutes" min="0" max="59" value="0" />
+             </div>
+             <div class="input-group">
+               <label data-i18n="cdSecondsLabel">秒</label>
+              <input type="number" id="cd-seconds" min="0" max="59" value="0" />
+            </div>
+          </div>
+          <div class="btn-group">
+             <button id="cd-start" class="action-btn" data-i18n="cdStart">开始</button>
+             <button id="cd-reset" class="action-btn" data-i18n="cdReset">重置</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="timezone-panel" class="panel">
+        <div class="panel-content">
+          <div id="timezone-list" class="timezone-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -22,6 +22,7 @@ let is24Hour: boolean = true;
 let selectedTimezone: string = 'local';
 let clockSize: number = 480;
 let cachedCanvasSize: number = 0;
+let clockOnlyMode: boolean = false;
 
 // Cached Intl formatters for performance
 const intlFormatterCache: Map<string, Intl.DateTimeFormat> = new Map();
@@ -78,7 +79,10 @@ const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 const themeBtn = document.getElementById('theme-btn') as HTMLButtonElement;
 const formatBtn = document.getElementById('format-btn') as HTMLButtonElement;
 const langBtn = document.getElementById('lang-btn') as HTMLButtonElement;
+const clockOnlyBtn = document.getElementById('clock-only-btn') as HTMLButtonElement;
 const timezoneDisplay = document.getElementById('timezone-display') as HTMLDivElement;
+const clockOnlyHint = document.getElementById('clock-only-hint') as HTMLDivElement;
+const tabNav = document.getElementById('tab-nav') as HTMLElement;
 const tabBtns = document.querySelectorAll('.tab-btn');
 const panels = document.querySelectorAll('.panel');
 const sizeSlider = document.getElementById('clock-size-slider') as HTMLInputElement;
@@ -172,6 +176,12 @@ function loadPreferences(): void {
   const savedTab = localStorage.getItem('clock-tab');
   if (savedTab) {
     switchTab(savedTab);
+  }
+
+  const savedClockOnly = localStorage.getItem('clock-only-mode');
+  if (savedClockOnly) {
+    clockOnlyMode = savedClockOnly === 'true';
+    applyClockOnlyMode();
   }
 }
 
@@ -402,6 +412,61 @@ function formatCountdown(ms: number): string {
 
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
+
+// Toggle clock-only mode function
+function applyClockOnlyMode(): void {
+  const header = document.querySelector('header') as HTMLElement;
+  if (clockOnlyMode) {
+    // Hide header, tab nav, timezone display, and all panels — only clock canvas remains
+    if (header) header.style.display = 'none';
+    if (timezoneDisplay) timezoneDisplay.style.display = 'none';
+    if (tabNav) tabNav.style.display = 'none';
+    panels.forEach(p => p.classList.remove('active'));
+    clockOnlyBtn.textContent = '⭕';
+    // Show exit hint
+    if (clockOnlyHint) {
+      clockOnlyHint.textContent = t('clockOnlyExitHint');
+      clockOnlyHint.style.display = 'block';
+      // Auto-hide hint after 3 seconds
+      setTimeout(() => {
+        if (clockOnlyHint) clockOnlyHint.style.display = 'none';
+      }, 3000);
+    }
+  } else {
+    if (header) header.style.display = '';
+    if (timezoneDisplay) timezoneDisplay.style.display = '';
+    if (tabNav) tabNav.style.display = '';
+    clockOnlyBtn.textContent = '🔵';
+    // Hide hint
+    if (clockOnlyHint) clockOnlyHint.style.display = 'none';
+  }
+}
+
+// Clock-only mode toggle
+if (clockOnlyBtn) {
+  clockOnlyBtn.addEventListener('click', (): void => {
+    clockOnlyMode = !clockOnlyMode;
+    localStorage.setItem('clock-only-mode', clockOnlyMode.toString());
+    applyClockOnlyMode();
+  });
+}
+
+// Press Escape or double-click canvas to exit clock-only mode
+document.addEventListener('keydown', (e: KeyboardEvent): void => {
+  if (e.key === 'Escape' && clockOnlyMode) {
+    clockOnlyMode = false;
+    localStorage.setItem('clock-only-mode', 'false');
+    applyClockOnlyMode();
+  }
+});
+
+canvas.addEventListener('dblclick', (): void => {
+  if (clockOnlyMode) {
+    clockOnlyMode = false;
+    localStorage.setItem('clock-only-mode', 'false');
+    applyClockOnlyMode();
+  }
+});
 
 // Theme toggle
 themeBtn.addEventListener('click', (): void => {
@@ -644,6 +709,7 @@ function updateUILanguage(): void {
   // Update button titles
   themeBtn.title = t('themeToggleTitle');
   formatBtn.title = t('formatToggleTitle');
+  if (clockOnlyBtn) clockOnlyBtn.title = t('clockOnlyTitle');
   
   // Update language button display
   const langBtn = document.getElementById('lang-btn') as HTMLButtonElement;

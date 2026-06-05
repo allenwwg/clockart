@@ -49,6 +49,8 @@ export interface Translations {
   themeToggleTitle: string;
   formatToggleTitle: string;
   languageToggleTitle: string;
+  clockOnlyTitle: string;
+  clockOnlyExitHint: string;
 
   // Date display
   monthNames: string[];
@@ -92,6 +94,8 @@ const translations: Record<string, Translations> = {
     themeToggleTitle: '切换主题',
     formatToggleTitle: '切换12/24小时制',
     languageToggleTitle: '切换语言',
+    clockOnlyTitle: '仅显示圆形时钟',
+    clockOnlyExitHint: '按 ESC 键或双击时钟退出此模式',
     monthNames: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
     weekdayNames: ['日','一','二','三','四','五','六'],
   },
@@ -131,6 +135,8 @@ const translations: Record<string, Translations> = {
     themeToggleTitle: 'Toggle theme',
     formatToggleTitle: 'Toggle 12/24h format',
     languageToggleTitle: 'Toggle language',
+    clockOnlyTitle: 'Clock Only Mode',
+    clockOnlyExitHint: 'Press ESC or double-click clock to exit',
     monthNames: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
     weekdayNames: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
   },
@@ -170,6 +176,8 @@ const translations: Record<string, Translations> = {
     themeToggleTitle: 'テーマ切替',
     formatToggleTitle: '12/24時間切替',
     languageToggleTitle: '言語切替',
+    clockOnlyTitle: '時計のみ表示',
+    clockOnlyExitHint: 'ESC キーまたは時計をダブルクリックして退出',
     monthNames: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
     weekdayNames: ['日','月','火','水','木','金','土'],
   },
@@ -209,6 +217,8 @@ const translations: Record<string, Translations> = {
     themeToggleTitle: '테마 전환',
     formatToggleTitle: '12/24시간 전환',
     languageToggleTitle: '언어 전환',
+    clockOnlyTitle: '시계만 표시',
+    clockOnlyExitHint: 'ESC 키 또는 시계 더블클릭하여 나가기',
     monthNames: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
     weekdayNames: ['일','월','화','수','목','금','토'],
   },

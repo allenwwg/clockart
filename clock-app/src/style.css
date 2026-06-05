@@ -591,6 +591,44 @@ header h1 {
   }
 }
 
+/* Clock-only mode hint */
+.clock-only-hint {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  pointer-events: none;
+  z-index: 999;
+  animation: clockOnlyHintFadeIn 0.3s ease, clockOnlyHintFadeOut 0.5s ease 2.5s forwards;
+}
+
+@keyframes clockOnlyHintFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes clockOnlyHintFadeOut {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+}
+
 /* Touch device specific */
 @media (hover: none) and (pointer: coarse) {
   .timezone-item:hover {

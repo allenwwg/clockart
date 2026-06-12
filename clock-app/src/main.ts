@@ -24,12 +24,32 @@ let clockSize: number = 480;
 let cachedCanvasSize: number = 0;
 let clockOnlyMode: boolean = false;
 
-// Cached Intl formatters for performance
-const intlFormatterCache: Map<string, Intl.DateTimeFormat> = new Map();
-const timezoneListFormatterCache: Map<string, Intl.DateTimeFormat> = new Map();
+// ---- Compatibility: Polyfill for Map (very old browsers) ----
+var MapPolyfill = typeof Map !== 'undefined' ? Map : function() {
+  var data = {};
+  this.has = function(k) { return Object.prototype.hasOwnProperty.call(data, k); };
+  this.get = function(k) { return this.has(k) ? data[k] : undefined; };
+  this.set = function(k, v) { data[k] = v; return this; };
+  this.clear = function() { for (var key in data) delete data[key]; };
+};
+
+// ---- Compatibility: Polyfill for String.padStart ----
+if (!String.prototype.padStart) {
+  String.prototype.padStart = function(targetLength, padString) {
+    targetLength = targetLength >> 0;
+    padString = String(padString !== undefined ? padString : ' ');
+    if (this.length >= targetLength) return String(this);
+    var padding = padString.repeat(Math.ceil((targetLength - this.length) / padString.length));
+    return padding.slice(0, targetLength - this.length) + String(this);
+  };
+}
+
+// Cached Intl formatters for performance (use polyfilled Map)
+var intlFormatterCache = new MapPolyfill();
+var timezoneListFormatterCache = new MapPolyfill();
 
 function getClockIntlFormatter(timezone: string): Intl.DateTimeFormat {
-  const key = `${timezone}_clock`;
+  var key = timezone + '_clock';
   if (!intlFormatterCache.has(key)) {
     intlFormatterCache.set(key, new Intl.DateTimeFormat('zh-CN', {
       timeZone: timezone,
@@ -42,21 +62,21 @@ function getClockIntlFormatter(timezone: string): Intl.DateTimeFormat {
       weekday: 'short',
     }));
   }
-  return intlFormatterCache.get(key)!;
+  return intlFormatterCache.get(key);
 }
 
 function getTimezoneListFormatter(timezone: string, hour12: boolean): Intl.DateTimeFormat {
-  const key = `${timezone}_list_${hour12 ? '12' : '24'}`;
+  var key = timezone + '_list_' + (hour12 ? '12' : '24');
   if (!timezoneListFormatterCache.has(key)) {
     timezoneListFormatterCache.set(key, new Intl.DateTimeFormat('zh-CN', {
       timeZone: timezone,
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12,
+      hour12: hour12,
     }));
   }
-  return timezoneListFormatterCache.get(key)!;
+  return timezoneListFormatterCache.get(key);
 }
 
 
@@ -73,37 +93,46 @@ let countdownTotal: number = 0;
 let countdownRemaining: number = 0;
 let countdownInterval: number | null = null;
 
+// ---- Compatibility: Safe DOM element retrieval ----
+function getElementByIdSafe(id: string, tag: string): HTMLElement {
+  var el = document.getElementById(id);
+  return el || null;
+}
+
 // DOM Elements
-const canvas = document.getElementById('clock-canvas') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-const themeBtn = document.getElementById('theme-btn') as HTMLButtonElement;
-const formatBtn = document.getElementById('format-btn') as HTMLButtonElement;
-const langBtn = document.getElementById('lang-btn') as HTMLButtonElement;
-const clockOnlyBtn = document.getElementById('clock-only-btn') as HTMLButtonElement;
-const timezoneDisplay = document.getElementById('timezone-display') as HTMLDivElement;
-const clockOnlyHint = document.getElementById('clock-only-hint') as HTMLDivElement;
-const tabNav = document.getElementById('tab-nav') as HTMLElement;
-const tabBtns = document.querySelectorAll('.tab-btn');
-const panels = document.querySelectorAll('.panel');
-const sizeSlider = document.getElementById('clock-size-slider') as HTMLInputElement;
+const canvas = getElementByIdSafe('clock-canvas', 'canvas');
+const ctx = canvas ? canvas.getContext('2d') : null;
+const themeBtn = getElementByIdSafe('theme-btn', 'button');
+const formatBtn = getElementByIdSafe('format-btn', 'button');
+const langBtn = getElementByIdSafe('lang-btn', 'button');
+const clockOnlyBtn = getElementByIdSafe('clock-only-btn', 'button');
+const timezoneDisplay = getElementByIdSafe('timezone-display', 'div');
+const clockOnlyHint = getElementByIdSafe('clock-only-hint', 'div');
+const tabNav = getElementByIdSafe('tab-nav', 'nav');
+
+// ---- Compatibility: querySelectorAll may return NodeList, iterate safely ----
+const tabBtns = typeof document !== 'undefined' ? document.querySelectorAll('.tab-btn') : [];
+const panels = typeof document !== 'undefined' ? document.querySelectorAll('.panel') : [];
+
+const sizeSlider = getElementByIdSafe('clock-size-slider', 'input');
 
 // Stopwatch elements
-const swDisplay = document.getElementById('stopwatch-display') as HTMLDivElement;
-const swStartBtn = document.getElementById('sw-start') as HTMLButtonElement;
-const swLapBtn = document.getElementById('sw-lap') as HTMLButtonElement;
-const swResetBtn = document.getElementById('sw-reset') as HTMLButtonElement;
-const lapList = document.getElementById('lap-list') as HTMLDivElement;
+const swDisplay = getElementByIdSafe('stopwatch-display', 'div');
+const swStartBtn = getElementByIdSafe('sw-start', 'button');
+const swLapBtn = getElementByIdSafe('sw-lap', 'button');
+const swResetBtn = getElementByIdSafe('sw-reset', 'button');
+const lapList = getElementByIdSafe('lap-list', 'div');
 
 // Countdown elements
-const cdDisplay = document.getElementById('countdown-display') as HTMLDivElement;
-const cdHoursInput = document.getElementById('cd-hours') as HTMLInputElement;
-const cdMinutesInput = document.getElementById('cd-minutes') as HTMLInputElement;
-const cdSecondsInput = document.getElementById('cd-seconds') as HTMLInputElement;
-const cdStartBtn = document.getElementById('cd-start') as HTMLButtonElement;
-const cdResetBtn = document.getElementById('cd-reset') as HTMLButtonElement;
+const cdDisplay = getElementByIdSafe('countdown-display', 'div');
+const cdHoursInput = getElementByIdSafe('cd-hours', 'input');
+const cdMinutesInput = getElementByIdSafe('cd-minutes', 'input');
+const cdSecondsInput = getElementByIdSafe('cd-seconds', 'input');
+const cdStartBtn = getElementByIdSafe('cd-start', 'button');
+const cdResetBtn = getElementByIdSafe('cd-reset', 'button');
 
 // Timezone data
-const timezoneNames: Record<string, Record<string, string>> = {
+const timezoneNames = {
   local: { zh: '本地时间', en: 'Local Time', ja: 'ローカル時刻', ko: '로컬 시간' },
   'Asia/Shanghai': { zh: '北京时间', en: 'Beijing Time', ja: '北京時間', ko: '베이징 시간' },
   'Asia/Tokyo': { zh: '东京时间', en: 'Tokyo Time', ja: '東京時間', ko: '도쿄 시간' },
@@ -119,7 +148,7 @@ const timezoneNames: Record<string, Record<string, string>> = {
   'Australia/Sydney': { zh: '悉尼时间', en: 'Sydney Time', ja: 'シドニー時間', ko: '시드니 시간' },
 };
 
-const timezones: TimezoneInfo[] = [
+const timezones = [
   { name: 'local', zone: 'local', offset: '本地' },
   { name: 'Asia/Shanghai', zone: 'Asia/Shanghai', offset: 'UTC+8' },
   { name: 'Asia/Tokyo', zone: 'Asia/Tokyo', offset: 'UTC+9' },
@@ -136,49 +165,54 @@ const timezones: TimezoneInfo[] = [
 ];
 
 function getTimezoneName(zone: string): string {
-  const lang = getLanguage();
-  return timezoneNames[zone]?.[lang] || timezoneNames[zone]?.['zh'] || zone;
+  var lang = getLanguage();
+  var zoneNames = timezoneNames[zone];
+  if (zoneNames) {
+    if (zoneNames[lang]) return zoneNames[lang];
+    if (zoneNames['zh']) return zoneNames['zh'];
+  }
+  return zone;
 }
 
 // Load saved preferences from localStorage
 function loadPreferences(): void {
-  const savedTheme = localStorage.getItem('clock-theme');
+  var savedTheme = localStorage.getItem('clock-theme');
   if (savedTheme) {
     currentTheme = savedTheme;
     document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : '');
-    themeBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+    if (themeBtn) themeBtn.textContent = savedTheme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
   }
 
-  const savedFormat = localStorage.getItem('clock-format');
+  var savedFormat = localStorage.getItem('clock-format');
   if (savedFormat) {
     is24Hour = savedFormat === '24';
-    formatBtn.textContent = is24Hour ? '24H' : '12H';
+    if (formatBtn) formatBtn.textContent = is24Hour ? '24H' : '12H';
   }
 
-  const savedTimezone = localStorage.getItem('clock-timezone');
+  var savedTimezone = localStorage.getItem('clock-timezone');
   if (savedTimezone) {
     selectedTimezone = savedTimezone;
   }
 
-  const savedCountdown = localStorage.getItem('clock-countdown');
+  var savedCountdown = localStorage.getItem('clock-countdown');
   if (savedCountdown) {
-    const [h, m, s] = savedCountdown.split(':').map(Number);
-    cdHoursInput.value = h.toString();
-    cdMinutesInput.value = m.toString();
-    cdSecondsInput.value = s.toString();
+    var parts = savedCountdown.split(':');
+    if (cdHoursInput) cdHoursInput.value = parseInt(parts[0], 10).toString();
+    if (cdMinutesInput) cdMinutesInput.value = parseInt(parts[1], 10).toString();
+    if (cdSecondsInput) cdSecondsInput.value = parseInt(parts[2], 10).toString();
   }
 
-  const savedSize = localStorage.getItem('clock-size');
+  var savedSize = localStorage.getItem('clock-size');
   if (savedSize) {
     clockSize = parseInt(savedSize, 10);
   }
 
-  const savedTab = localStorage.getItem('clock-tab');
+  var savedTab = localStorage.getItem('clock-tab');
   if (savedTab) {
     switchTab(savedTab);
   }
 
-  const savedClockOnly = localStorage.getItem('clock-only-mode');
+  var savedClockOnly = localStorage.getItem('clock-only-mode');
   if (savedClockOnly) {
     clockOnlyMode = savedClockOnly === 'true';
     applyClockOnlyMode();
@@ -187,7 +221,7 @@ function loadPreferences(): void {
 
 // Get theme colors
 function getThemeColors(): ThemeConfig {
-  const isDark = currentTheme === 'dark';
+  var isDark = currentTheme === 'dark';
   return {
     bg: isDark ? '#16213e' : '#ffffff',
     border: isDark ? '#eee' : '#333',
@@ -200,32 +234,91 @@ function getThemeColors(): ThemeConfig {
 
 // Initialize canvas size
 function initCanvas(): void {
-  const maxWidth = window.innerWidth - 40;
-  const size = Math.min(clockSize, maxWidth);
+  if (!canvas) return;
+  var maxWidth = window.innerWidth - 40;
+  var size = Math.min(clockSize, maxWidth);
   cachedCanvasSize = size;
-  const dpr = window.devicePixelRatio || 1;
+  // ---- Compatibility: devicePixelRatio may not exist ----
+  var dpr = (typeof window.devicePixelRatio !== 'undefined' && window.devicePixelRatio) || 1;
   canvas.width = size * dpr;
   canvas.height = size * dpr;
-  canvas.style.width = `${size}px`;
-  canvas.style.height = `${size}px`;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  if (ctx) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 }
 
-// Cached timezone lookup to avoid .find() every frame
+// Cached timezone lookup
 let cachedSelectedTz: TimezoneInfo | undefined;
 
 function updateCachedTimezone(): void {
-  cachedSelectedTz = timezones.find(tz => tz.zone === selectedTimezone);
+  cachedSelectedTz = null;
+  for (var i = 0; i < timezones.length; i++) {
+    if (timezones[i].zone === selectedTimezone) {
+      cachedSelectedTz = timezones[i];
+      break;
+    }
+  }
+}
+
+// ---- Compatibility: Safe parse of timezone time without formatToParts ----
+// formatToParts is NOT supported in older browsers (iOS < 10, old Android WebView)
+// Use toLocaleString and manual parsing instead
+function getTimeInTimezone(date: Date, timezone: string) {
+  var result = {
+    hours: date.getHours(),
+    minutes: date.getMinutes(),
+    seconds: date.getSeconds(),
+    year: date.getFullYear(),
+    month: date.getMonth(),
+    date: date.getDate(),
+    weekday: date.getDay(),
+  };
+
+  try {
+    // Get the time as a string in the target timezone using ISO format
+    var tzString = date.toLocaleString('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+
+    // Parse "MM/DD/YYYY HH:mm:ss" format
+    var dateParts = tzString.split(' ')[0].split('/');
+    var timeParts = tzString.split(' ')[1].split(':');
+
+    if (dateParts.length === 3 && timeParts.length === 3) {
+      result.year = parseInt(dateParts[0], 10);
+      result.month = parseInt(dateParts[1], 10) - 1;
+      result.date = parseInt(dateParts[2], 10);
+      result.hours = parseInt(timeParts[0], 10);
+      result.minutes = parseInt(timeParts[1], 10);
+      result.seconds = parseInt(timeParts[2], 10);
+    }
+  } catch (e) {
+    // Fallback: use local time if timezone conversion fails
+    console.warn('Timezone conversion failed, using local time');
+  }
+
+  return result;
 }
 
 // Draw the analog clock
 function drawClock(date: Date): void {
-  const size = cachedCanvasSize;
-  const centerX = size / 2;
-  const centerY = size / 2;
-  const radius = size / 2 - 10;
+  if (!ctx || !canvas) return;
 
-  const colors = getThemeColors();
+  var size = cachedCanvasSize;
+  var centerX = size / 2;
+  var centerY = size / 2;
+  var radius = size / 2 - 10;
+
+  var colors = getThemeColors();
 
   // Clear canvas
   ctx.clearRect(0, 0, size, size);
@@ -240,11 +333,11 @@ function drawClock(date: Date): void {
   ctx.stroke();
 
   // Draw hour markers
-  for (let i = 0; i < 12; i++) {
-    const angle = (i * Math.PI) / 6 - Math.PI / 2;
-    const isQuarterHour = i % 3 === 0;
-    const outerRadius = radius - 8;
-    const innerRadius = isQuarterHour ? radius - 28 : radius - 18;
+  for (var i = 0; i < 12; i++) {
+    var angle = (i * Math.PI) / 6 - Math.PI / 2;
+    var isQuarterHour = i % 3 === 0;
+    var outerRadius = radius - 8;
+    var innerRadius = isQuarterHour ? radius - 28 : radius - 18;
 
     ctx.beginPath();
     ctx.moveTo(centerX + Math.cos(angle) * innerRadius, centerY + Math.sin(angle) * innerRadius);
@@ -255,11 +348,11 @@ function drawClock(date: Date): void {
   }
 
   // Draw minute markers
-  for (let i = 0; i < 60; i++) {
+  for (i = 0; i < 60; i++) {
     if (i % 5 !== 0) {
-      const angle = (i * Math.PI) / 30 - Math.PI / 2;
-      const outerRadius = radius - 8;
-      const innerRadius = radius - 14;
+      angle = (i * Math.PI) / 30 - Math.PI / 2;
+      outerRadius = radius - 8;
+      innerRadius = radius - 14;
 
       ctx.beginPath();
       ctx.moveTo(centerX + Math.cos(angle) * innerRadius, centerY + Math.sin(angle) * innerRadius);
@@ -272,21 +365,21 @@ function drawClock(date: Date): void {
 
   // Draw numbers
   ctx.fillStyle = colors.number;
-  ctx.font = `${size * 0.06}px 'Segoe UI', sans-serif`;
+  ctx.font = (size * 0.06) + 'px "Segoe UI", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  for (let i = 1; i <= 12; i++) {
-    const angle = (i * Math.PI) / 6 - Math.PI / 2;
-    const numRadius = radius - 42;
-    const x = centerX + Math.cos(angle) * numRadius;
-    const y = centerY + Math.sin(angle) * numRadius;
+  for (i = 1; i <= 12; i++) {
+    angle = (i * Math.PI) / 6 - Math.PI / 2;
+    var numRadius = radius - 42;
+    var x = centerX + Math.cos(angle) * numRadius;
+    var y = centerY + Math.sin(angle) * numRadius;
     ctx.fillText(i.toString(), x, y);
   }
 
   // Get time components
-  let hours: number, minutes: number, seconds: number, ms: number;
-  let displayYear: number, displayMonth: number, displayDate: number, displayWeekday: number;
-  
+  var hours, minutes, seconds, ms;
+  var displayYear, displayMonth, displayDate, displayWeekday;
+
   if (selectedTimezone === 'local') {
     hours = date.getHours();
     minutes = date.getMinutes();
@@ -297,23 +390,21 @@ function drawClock(date: Date): void {
     displayDate = date.getDate();
     displayWeekday = date.getDay();
   } else {
-    const formatter = getClockIntlFormatter(selectedTimezone);
-    const parts = formatter.formatToParts(date);
-    const getPart = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0');
-    hours = getPart('hour');
-    minutes = getPart('minute');
-    seconds = getPart('second');
-    displayYear = getPart('year');
-    displayMonth = getPart('month') - 1;
-    displayDate = getPart('day');
-    displayWeekday = date.getDay();
+    var tzTime = getTimeInTimezone(date, selectedTimezone);
+    hours = tzTime.hours;
+    minutes = tzTime.minutes;
+    seconds = tzTime.seconds;
+    displayYear = tzTime.year;
+    displayMonth = tzTime.month;
+    displayDate = tzTime.date;
+    displayWeekday = date.getDay(); // weekday needs timezone-specific calc but we approximate
     ms = date.getMilliseconds();
   }
 
   // Calculate angles
-  const secondAngle = ((seconds + ms / 1000) * Math.PI) / 30 - Math.PI / 2;
-  const minuteAngle = ((minutes + seconds / 60) * Math.PI) / 30 - Math.PI / 2;
-  const hourAngle = (((hours % 12) + minutes / 60) * Math.PI) / 6 - Math.PI / 2;
+  var secondAngle = ((seconds + ms / 1000) * Math.PI) / 30 - Math.PI / 2;
+  var minuteAngle = ((minutes + seconds / 60) * Math.PI) / 30 - Math.PI / 2;
+  var hourAngle = (((hours % 12) + minutes / 60) * Math.PI) / 6 - Math.PI / 2;
 
   // Draw hour hand
   ctx.beginPath();
@@ -367,23 +458,44 @@ function drawClock(date: Date): void {
   ctx.fill();
 
   // Draw date display below center
-  const monthNames = tArray('monthNames');
-  const weekdayNames = tArray('weekdayNames');
-  const dateStr = `${displayYear}.${String(displayMonth + 1).padStart(2, '0')}.${String(displayDate).padStart(2, '0')} ${weekdayNames[displayWeekday] || ''}`;
-  
+  var monthNames = tArray('monthNames');
+  var weekdayNames = tArray('weekdayNames');
+  var monthStr = String(displayMonth + 1).padStart(2, '0');
+  var dateStr = displayYear + '.' + monthStr + '.' + String(displayDate).padStart(2, '0') + ' ' + (weekdayNames[displayWeekday] || '');
+
   ctx.fillStyle = colors.number;
-  ctx.font = `${size * 0.035}px 'Segoe UI', sans-serif`;
+  ctx.font = (size * 0.035) + 'px "Segoe UI", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(dateStr, centerX, centerY + radius * 0.35);
 
   // Update timezone display using cached lookup
   if (selectedTimezone === 'local') {
-    timezoneDisplay.textContent = t('localTimeLabel');
+    if (timezoneDisplay) timezoneDisplay.textContent = t('localTimeLabel');
   } else {
-    timezoneDisplay.textContent = cachedSelectedTz ? `${t('timezoneDisplayLabel')} ${getTimezoneName(cachedSelectedTz.name)} (${cachedSelectedTz.offset})` : '';
+    if (timezoneDisplay && cachedSelectedTz) {
+      timezoneDisplay.textContent = t('timezoneDisplayLabel') + ' ' + getTimezoneName(cachedSelectedTz.name) + ' (' + cachedSelectedTz.offset + ')';
+    }
   }
 }
+
+// ---- Compatibility: requestAnimationFrame polyfill ----
+(function(global) {
+  if (!global.requestAnimationFrame) {
+    var lastTime = 0;
+    global.requestAnimationFrame = function(callback) {
+      var now = Date.now();
+      var delta = Math.max(0, 16 - (now - lastTime));
+      var id = setTimeout(function() { callback(lastTime = now + delta); }, delta);
+      return id;
+    };
+    if (!global.cancelAnimationFrame) {
+      global.cancelAnimationFrame = function(id) {
+        clearTimeout(id);
+      };
+    }
+  }
+})(window);
 
 // Animation loop
 function animate(): void {
@@ -393,42 +505,42 @@ function animate(): void {
 
 // Format time for display
 function formatTime(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const centiseconds = Math.floor((ms % 1000) / 10);
+  var totalSeconds = Math.floor(ms / 1000);
+  var hours = Math.floor(totalSeconds / 3600);
+  var minutes = Math.floor((totalSeconds % 3600) / 60);
+  var seconds = totalSeconds % 60;
+  var centiseconds = Math.floor((ms % 1000) / 10);
 
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centiseconds).padStart(2, '0')}`;
+  return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0') + '.' + String(centiseconds).padStart(2, '0');
 }
 
 // Format countdown time
 function formatCountdown(ms: number): string {
   if (ms <= 0) return '00:00:00';
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  var totalSeconds = Math.floor(ms / 1000);
+  var hours = Math.floor(totalSeconds / 3600);
+  var minutes = Math.floor((totalSeconds % 3600) / 60);
+  var seconds = totalSeconds % 60;
 
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
 }
 
 // Toggle clock-only mode function
 function applyClockOnlyMode(): void {
-  const header = document.querySelector('header') as HTMLElement;
+  var header = document.querySelector('header');
   if (clockOnlyMode) {
-    // Hide header, tab nav, timezone display, and all panels — only clock canvas remains
     if (header) header.style.display = 'none';
     if (timezoneDisplay) timezoneDisplay.style.display = 'none';
     if (tabNav) tabNav.style.display = 'none';
-    panels.forEach(p => p.classList.remove('active'));
-    clockOnlyBtn.textContent = '⭕';
-    // Show exit hint
+    // ---- Compatibility: NodeList forEach may not exist ----
+    for (var i = 0; i < panels.length; i++) {
+      panels[i].classList.remove('active');
+    }
+    if (clockOnlyBtn) clockOnlyBtn.textContent = '\u2B55';
     if (clockOnlyHint) {
       clockOnlyHint.textContent = t('clockOnlyExitHint');
       clockOnlyHint.style.display = 'block';
-      // Auto-hide hint after 3 seconds
-      setTimeout(() => {
+      setTimeout(function() {
         if (clockOnlyHint) clockOnlyHint.style.display = 'none';
       }, 3000);
     }
@@ -436,15 +548,14 @@ function applyClockOnlyMode(): void {
     if (header) header.style.display = '';
     if (timezoneDisplay) timezoneDisplay.style.display = '';
     if (tabNav) tabNav.style.display = '';
-    clockOnlyBtn.textContent = '🔵';
-    // Hide hint
+    if (clockOnlyBtn) clockOnlyBtn.textContent = '\uD83D\uDD35';
     if (clockOnlyHint) clockOnlyHint.style.display = 'none';
   }
 }
 
 // Clock-only mode toggle
 if (clockOnlyBtn) {
-  clockOnlyBtn.addEventListener('click', (): void => {
+  clockOnlyBtn.addEventListener('click', function(): void {
     clockOnlyMode = !clockOnlyMode;
     localStorage.setItem('clock-only-mode', clockOnlyMode.toString());
     applyClockOnlyMode();
@@ -452,7 +563,7 @@ if (clockOnlyBtn) {
 }
 
 // Press Escape or double-click canvas to exit clock-only mode
-document.addEventListener('keydown', (e: KeyboardEvent): void => {
+document.addEventListener('keydown', function(e): void {
   if (e.key === 'Escape' && clockOnlyMode) {
     clockOnlyMode = false;
     localStorage.setItem('clock-only-mode', 'false');
@@ -460,60 +571,76 @@ document.addEventListener('keydown', (e: KeyboardEvent): void => {
   }
 });
 
-canvas.addEventListener('dblclick', (): void => {
-  if (clockOnlyMode) {
-    clockOnlyMode = false;
-    localStorage.setItem('clock-only-mode', 'false');
-    applyClockOnlyMode();
-  }
-});
+if (canvas) {
+  canvas.addEventListener('dblclick', function(): void {
+    if (clockOnlyMode) {
+      clockOnlyMode = false;
+      localStorage.setItem('clock-only-mode', 'false');
+      applyClockOnlyMode();
+    }
+  });
+}
 
 // Theme toggle
-themeBtn.addEventListener('click', (): void => {
-  currentTheme = currentTheme === 'light' ? 'dark' : 'light';
-  if (currentTheme === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-  }
-  themeBtn.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
-  localStorage.setItem('clock-theme', currentTheme);
-});
+if (themeBtn) {
+  themeBtn.addEventListener('click', function(): void {
+    currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+    if (currentTheme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    themeBtn.textContent = currentTheme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+    localStorage.setItem('clock-theme', currentTheme);
+  });
+}
 
 // Format toggle
-formatBtn.addEventListener('click', (): void => {
-  is24Hour = !is24Hour;
-  formatBtn.textContent = is24Hour ? '24H' : '12H';
-  localStorage.setItem('clock-format', is24Hour ? '24' : '12');
-  // Clear timezone list formatter cache since hour12 changed
-  timezoneListFormatterCache.clear();
-  renderTimezones();
-});
+if (formatBtn) {
+  formatBtn.addEventListener('click', function(): void {
+    is24Hour = !is24Hour;
+    formatBtn.textContent = is24Hour ? '24H' : '12H';
+    localStorage.setItem('clock-format', is24Hour ? '24' : '12');
+    timezoneListFormatterCache.clear();
+    renderTimezones();
+  });
+}
 
 // Tab switching
 function switchTab(tab: string): void {
-  tabBtns.forEach(b => b.classList.remove('active'));
-  panels.forEach(p => p.classList.remove('active'));
-  const targetBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
-  if (targetBtn) targetBtn.classList.add('active');
-  const panel = document.getElementById(`${tab}-panel`);
+  for (var i = 0; i < tabBtns.length; i++) {
+    tabBtns[i].classList.remove('active');
+  }
+  for (var j = 0; j < panels.length; j++) {
+    panels[j].classList.remove('active');
+  }
+  // Find the target button
+  for (i = 0; i < tabBtns.length; i++) {
+    if (tabBtns[i].getAttribute('data-tab') === tab) {
+      tabBtns[i].classList.add('active');
+      break;
+    }
+  }
+  var panel = document.getElementById(tab + '-panel');
   if (panel) panel.classList.add('active');
 }
 
-tabBtns.forEach(btn => {
-  btn.addEventListener('click', (): void => {
-    const tab = btn.getAttribute('data-tab');
-    if (!tab) return;
-    switchTab(tab);
-    localStorage.setItem('clock-tab', tab);
-  });
-});
+for (var btnIdx = 0; btnIdx < tabBtns.length; btnIdx++) {
+  (function(btn) {
+    btn.addEventListener('click', function(): void {
+      var tab = btn.getAttribute('data-tab');
+      if (!tab) return;
+      switchTab(tab);
+      localStorage.setItem('clock-tab', tab);
+    });
+  })(tabBtns[btnIdx]);
+}
 
 // Stopwatch functions
 function updateStopwatch(): void {
-  const now = Date.now();
-  const elapsed = now - stopwatchStartTime + stopwatchElapsed;
-  swDisplay.textContent = formatTime(elapsed);
+  var now = Date.now();
+  var elapsed = now - stopwatchStartTime + stopwatchElapsed;
+  if (swDisplay) swDisplay.textContent = formatTime(elapsed);
 }
 
 function startStopwatch(): void {
@@ -521,12 +648,12 @@ function startStopwatch(): void {
     stopwatchRunning = true;
     stopwatchStartTime = Date.now();
     stopwatchInterval = window.setInterval(updateStopwatch, 10);
-    swStartBtn.textContent = t('swPause');
+    if (swStartBtn) swStartBtn.textContent = t('swPause');
   } else {
     stopwatchRunning = false;
     stopwatchElapsed += Date.now() - stopwatchStartTime;
     if (stopwatchInterval) clearInterval(stopwatchInterval);
-    swStartBtn.textContent = t('swStart');
+    if (swStartBtn) swStartBtn.textContent = t('swStart');
   }
 }
 
@@ -535,25 +662,25 @@ function resetStopwatch(): void {
   stopwatchElapsed = 0;
   stopwatchStartTime = 0;
   if (stopwatchInterval) clearInterval(stopwatchInterval);
-  swDisplay.textContent = '00:00:00.00';
-  swStartBtn.textContent = t('swStart');
+  if (swDisplay) swDisplay.textContent = '00:00:00.00';
+  if (swStartBtn) swStartBtn.textContent = t('swStart');
   lapCount = 0;
-  lapList.innerHTML = '';
+  if (lapList) lapList.innerHTML = '';
 }
 
 function recordLap(): void {
   if (!stopwatchRunning) return;
   lapCount++;
-  const elapsed = (Date.now() - stopwatchStartTime + stopwatchElapsed);
-  const item = document.createElement('div');
+  var elapsed = (Date.now() - stopwatchStartTime + stopwatchElapsed);
+  var item = document.createElement('div');
   item.className = 'data-list-item';
-  item.textContent = `${t('lapLabel')} ${lapCount}: ${formatTime(elapsed)}`;
-  lapList.prepend(item);
+  item.textContent = t('lapLabel') + ' ' + lapCount + ': ' + formatTime(elapsed);
+  if (lapList) lapList.prepend(item);
 }
 
-swStartBtn.addEventListener('click', startStopwatch);
-swResetBtn.addEventListener('click', resetStopwatch);
-swLapBtn.addEventListener('click', recordLap);
+if (swStartBtn) swStartBtn.addEventListener('click', startStopwatch);
+if (swResetBtn) swResetBtn.addEventListener('click', resetStopwatch);
+if (swLapBtn) swLapBtn.addEventListener('click', recordLap);
 
 // Countdown functions
 function updateCountdown(): void {
@@ -562,45 +689,43 @@ function updateCountdown(): void {
     countdownRemaining = 0;
     countdownRunning = false;
     if (countdownInterval) clearInterval(countdownInterval);
-    cdStartBtn.textContent = t('cdStart');
-    cdDisplay.textContent = '00:00:00';
-    
-    // Alert when countdown finishes
-    cdDisplay.style.color = '#e74c3c';
-    setTimeout(() => {
-      cdDisplay.style.color = '';
+    if (cdStartBtn) cdStartBtn.textContent = t('cdStart');
+    if (cdDisplay) cdDisplay.textContent = '00:00:00';
+
+    if (cdDisplay) cdDisplay.style.color = '#e74c3c';
+    setTimeout(function() {
+      if (cdDisplay) cdDisplay.style.color = '';
       alert(t('cdAlert'));
     }, 100);
   } else {
-    cdDisplay.textContent = formatCountdown(countdownRemaining);
+    if (cdDisplay) cdDisplay.textContent = formatCountdown(countdownRemaining);
   }
 }
 
 function startCountdown(): void {
   if (!countdownRunning) {
     if (countdownRemaining <= 0) {
-      const h = parseInt(cdHoursInput.value) || 0;
-      const m = parseInt(cdMinutesInput.value) || 0;
-      const s = parseInt(cdSecondsInput.value) || 0;
+      var h = parseInt(cdHoursInput.value, 10) || 0;
+      var m = parseInt(cdMinutesInput.value, 10) || 0;
+      var s = parseInt(cdSecondsInput.value, 10) || 0;
       countdownTotal = (h * 3600 + m * 60 + s) * 1000;
       countdownRemaining = countdownTotal;
-      
-      // Save countdown settings
-      localStorage.setItem('clock-countdown', `${h}:${m}:${s}`);
+
+      localStorage.setItem('clock-countdown', h + ':' + m + ':' + s);
     }
-    
+
     if (countdownRemaining > 0) {
       countdownRunning = true;
       countdownInterval = window.setInterval(updateCountdown, 100);
-      cdStartBtn.textContent = t('cdPause');
-      cdHoursInput.disabled = true;
-      cdMinutesInput.disabled = true;
-      cdSecondsInput.disabled = true;
+      if (cdStartBtn) cdStartBtn.textContent = t('cdPause');
+      if (cdHoursInput) cdHoursInput.disabled = true;
+      if (cdMinutesInput) cdMinutesInput.disabled = true;
+      if (cdSecondsInput) cdSecondsInput.disabled = true;
     }
   } else {
     countdownRunning = false;
     if (countdownInterval) clearInterval(countdownInterval);
-    cdStartBtn.textContent = t('cdResume');
+    if (cdStartBtn) cdStartBtn.textContent = t('cdResume');
   }
 }
 
@@ -608,61 +733,66 @@ function resetCountdown(): void {
   countdownRunning = false;
   if (countdownInterval) clearInterval(countdownInterval);
   countdownRemaining = countdownTotal;
-  cdStartBtn.textContent = t('cdStart');
-  cdHoursInput.disabled = false;
-  cdMinutesInput.disabled = false;
-  cdSecondsInput.disabled = false;
-  cdDisplay.textContent = countdownRemaining > 0 ? formatCountdown(countdownRemaining) : '00:00:00';
+  if (cdStartBtn) cdStartBtn.textContent = t('cdStart');
+  if (cdHoursInput) cdHoursInput.disabled = false;
+  if (cdMinutesInput) cdMinutesInput.disabled = false;
+  if (cdSecondsInput) cdSecondsInput.disabled = false;
+  if (cdDisplay) cdDisplay.textContent = countdownRemaining > 0 ? formatCountdown(countdownRemaining) : '00:00:00';
 }
 
-cdStartBtn.addEventListener('click', startCountdown);
-cdResetBtn.addEventListener('click', resetCountdown);
+if (cdStartBtn) cdStartBtn.addEventListener('click', startCountdown);
+if (cdResetBtn) cdResetBtn.addEventListener('click', resetCountdown);
 
 // Render timezone list
 function renderTimezones(): void {
-  const list = document.getElementById('timezone-list') as HTMLDivElement;
+  var list = document.getElementById('timezone-list');
+  if (!list) return;
   list.innerHTML = '';
 
-  const now = new Date();
+  var now = new Date();
 
-  timezones.forEach(tz => {
-    const item = document.createElement('div');
-    item.className = `timezone-item ${selectedTimezone === tz.zone ? 'active' : ''}`;
-    
-    let timeStr: string;
+  for (var i = 0; i < timezones.length; i++) {
+    var tz = timezones[i];
+    var item = document.createElement('div');
+    var activeClass = selectedTimezone === tz.zone ? ' active' : '';
+    item.className = 'timezone-item' + activeClass;
+
+    var timeStr;
     if (tz.zone === 'local') {
-      const h = now.getHours();
-      const m = now.getMinutes();
-      const s = now.getSeconds();
+      var h = now.getHours();
+      var mn = now.getMinutes();
+      var sc = now.getSeconds();
       if (is24Hour) {
-        timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        timeStr = String(h).padStart(2, '0') + ':' + String(mn).padStart(2, '0') + ':' + String(sc).padStart(2, '0');
       } else {
-        const hour12 = h % 12 || 12;
-        const ampm = h >= 12 ? 'PM' : 'AM';
-        timeStr = `${String(hour12).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} ${ampm}`;
+        var hour12 = h % 12 || 12;
+        var ampm = h >= 12 ? 'PM' : 'AM';
+        timeStr = String(hour12).padStart(2, '0') + ':' + String(mn).padStart(2, '0') + ':' + String(sc).padStart(2, '0') + ' ' + ampm;
       }
     } else {
-      const formatter = getTimezoneListFormatter(tz.zone, !is24Hour);
+      var formatter = getTimezoneListFormatter(tz.zone, !is24Hour);
       timeStr = formatter.format(now);
     }
 
-    item.innerHTML = `
-      <div>
-        <div class="timezone-name">${getTimezoneName(tz.name)}</div>
-        <div class="timezone-offset">${tz.offset}</div>
-      </div>
-      <div class="timezone-time">${timeStr}</div>
-    `;
+    item.innerHTML =
+      '<div>' +
+        '<div class="timezone-name">' + getTimezoneName(tz.name) + '</div>' +
+        '<div class="timezone-offset">' + tz.offset + '</div>' +
+      '</div>' +
+      '<div class="timezone-time">' + timeStr + '</div>';
 
-    item.addEventListener('click', (): void => {
-      selectedTimezone = tz.zone;
-      localStorage.setItem('clock-timezone', tz.zone);
-      updateCachedTimezone();
-      renderTimezones();
-    });
+    // Closure to capture tz in loop
+    (function(timezoneData) {
+      item.addEventListener('click', function(): void {
+        selectedTimezone = timezoneData.zone;
+        localStorage.setItem('clock-timezone', timezoneData.zone);
+        updateCachedTimezone();
+        renderTimezones();
+      });
+    })(tz);
 
     list.appendChild(item);
-  });
+  }
 }
 
 // Update timezone list every second
@@ -670,115 +800,137 @@ setInterval(renderTimezones, 1000);
 
 // Handle window resize with debounce
 let resizeTimer: number | null = null;
-window.addEventListener('resize', (): void => {
+window.addEventListener('resize', function(): void {
   if (resizeTimer) cancelAnimationFrame(resizeTimer);
-  resizeTimer = requestAnimationFrame((): void => {
+  resizeTimer = requestAnimationFrame(function(): void {
     initCanvas();
     resizeTimer = null;
   });
 });
 
-// Map internal language codes to HTML lang attribute values
-const langToHtmlLang: Record<string, string> = {
-  zh: 'zh-CN',
-  en: 'en',
-  ja: 'ja',
-  ko: 'ko',
-};
-
 // Update all UI text when language changes
 function updateUILanguage(): void {
-  // Update page title
   document.title = t('pageTitle');
 
-  // Update HTML lang attribute
-  document.documentElement.lang = langToHtmlLang[getLanguage()] || 'zh-CN';
+  var langMap = { zh: 'zh-CN', en: 'en', ja: 'ja', ko: 'ko' };
+  var currentLang = getLanguage();
+  document.documentElement.lang = langMap[currentLang] || 'zh-CN';
 
-  // Update all elements with data-i18n attribute
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
+  // ---- Compatibility: NodeList forEach may not exist on older browsers ----
+  var i18nElements = document.querySelectorAll('[data-i18n]');
+  for (var i = 0; i < i18nElements.length; i++) {
+    var el = i18nElements[i];
+    var key = el.getAttribute('data-i18n');
     if (key) {
-      const translation = t(key as keyof ReturnType<typeof loadLanguage>);
-      // Update text content for buttons, labels, and text elements
+      var translation = t(key);
       if (el instanceof HTMLButtonElement || el instanceof HTMLLabelElement || el instanceof HTMLParagraphElement || el instanceof HTMLHeadingElement) {
         el.textContent = translation;
       }
     }
-  });
-  
-  // Update button titles
-  themeBtn.title = t('themeToggleTitle');
-  formatBtn.title = t('formatToggleTitle');
+  }
+
+  if (themeBtn) themeBtn.title = t('themeToggleTitle');
+  if (formatBtn) formatBtn.title = t('formatToggleTitle');
   if (clockOnlyBtn) clockOnlyBtn.title = t('clockOnlyTitle');
-  
-  // Update language button display
-  const langBtn = document.getElementById('lang-btn') as HTMLButtonElement;
+
   if (langBtn) {
-    langBtn.textContent = languageIcons[getLanguage()] || '🇨🇳';
-    langBtn.title = `${t('languageToggleTitle')}: ${getLanguage().toUpperCase()}`;
+    var iconMap = languageIcons;
+    langBtn.textContent = iconMap[currentLang] || '\uD83C\uDDE8\uD83C\uDDF3';
+    langBtn.title = t('languageToggleTitle') + ': ' + currentLang.toUpperCase();
   }
-  
-  // Update stopwatch buttons based on state
-  if (stopwatchRunning) {
-    swStartBtn.textContent = t('swPause');
-  } else {
-    swStartBtn.textContent = t('swStart');
-  }
-  swLapBtn.textContent = t('swLap');
-  swResetBtn.textContent = t('swReset');
-  
-  // Update countdown buttons based on state
-  if (countdownRunning) {
-    cdStartBtn.textContent = t('cdPause');
-  } else if (countdownRemaining < countdownTotal && countdownRemaining > 0) {
-    cdStartBtn.textContent = t('cdResume');
-  } else {
-    cdStartBtn.textContent = t('cdStart');
-  }
-  cdResetBtn.textContent = t('cdReset');
-  
-  // Update lap list items
-  const lapItems = lapList.querySelectorAll('.data-list-item');
-  lapItems.forEach((item, idx) => {
-    const timeMatch = item.textContent?.match(/: (.*)$/);
-    if (timeMatch) {
-      item.textContent = `${t('lapLabel')} ${idx + 1}: ${timeMatch[1]}`;
+
+  if (swStartBtn) {
+    if (stopwatchRunning) {
+      swStartBtn.textContent = t('swPause');
+    } else {
+      swStartBtn.textContent = t('swStart');
     }
-  });
-  
+  }
+  if (swLapBtn) swLapBtn.textContent = t('swLap');
+  if (swResetBtn) swResetBtn.textContent = t('swReset');
+
+  if (cdStartBtn) {
+    if (countdownRunning) {
+      cdStartBtn.textContent = t('cdPause');
+    } else if (countdownRemaining < countdownTotal && countdownRemaining > 0) {
+      cdStartBtn.textContent = t('cdResume');
+    } else {
+      cdStartBtn.textContent = t('cdStart');
+    }
+  }
+  if (cdResetBtn) cdResetBtn.textContent = t('cdReset');
+
+  // Update lap list items
+  var lapItems = lapList ? lapList.querySelectorAll('.data-list-item') : [];
+  for (var j = 0; j < lapItems.length; j++) {
+    var lapText = lapItems[j].textContent;
+    if (lapText && lapText.indexOf(':') !== -1) {
+      var lastColon = lapText.lastIndexOf(':');
+      var timePart = lapText.substring(lastColon + 1);
+      lapItems[j].textContent = t('lapLabel') + ' ' + (j + 1) + ':' + timePart;
+    }
+  }
+
   // Update timezone display text
   if (selectedTimezone === 'local') {
-    timezoneDisplay.textContent = t('localTimeLabel');
+    if (timezoneDisplay) timezoneDisplay.textContent = t('localTimeLabel');
   } else {
-    const tz = timezones.find(tz => tz.zone === selectedTimezone);
-    timezoneDisplay.textContent = tz ? `${t('timezoneDisplayLabel')} ${getTimezoneName(tz.name)} (${tz.offset})` : '';
+    var foundTz = null;
+    for (var k = 0; k < timezones.length; k++) {
+      if (timezones[k].zone === selectedTimezone) {
+        foundTz = timezones[k];
+        break;
+      }
+    }
+    if (timezoneDisplay && foundTz) {
+      timezoneDisplay.textContent = t('timezoneDisplayLabel') + ' ' + getTimezoneName(foundTz.name) + ' (' + foundTz.offset + ')';
+    }
   }
-  
-  // Refresh timezone list
+
   renderTimezones();
 }
 
 // Clock size slider handler
-sizeSlider.addEventListener('input', (): void => {
-  clockSize = parseInt(sizeSlider.value, 10);
-  localStorage.setItem('clock-size', clockSize.toString());
-  initCanvas();
-});
+if (sizeSlider) {
+  sizeSlider.addEventListener('input', function(): void {
+    clockSize = parseInt(sizeSlider.value, 10);
+    localStorage.setItem('clock-size', clockSize.toString());
+    initCanvas();
+  });
+}
 
 // Language toggle button handler
 if (langBtn) {
-  langBtn.addEventListener('click', (): void => {
+  langBtn.addEventListener('click', function(): void {
     setLanguage(getNextLanguage());
     updateUILanguage();
   });
 }
 
+// ---- Compatibility check: If canvas or ctx is null, show a fallback message ----
+function checkBrowserCompatibility(): boolean {
+  if (!canvas || !ctx) {
+    var app = document.getElementById('app');
+    if (app) {
+      var msg = document.createElement('p');
+      msg.style.color = 'red';
+      msg.style.textAlign = 'center';
+      msg.textContent = '您的浏览器不支持 Canvas，请升级浏览器以使用时钟功能。';
+      app.insertBefore(msg, app.children[1]);
+    }
+    return false;
+  }
+  return true;
+}
+
 // Initialize
-loadLanguage();
-loadPreferences();
-sizeSlider.value = clockSize.toString();
-initCanvas();
-updateCachedTimezone();
-renderTimezones();
-updateUILanguage();
-animate();
+if (checkBrowserCompatibility()) {
+  loadLanguage();
+  loadPreferences();
+  if (sizeSlider) sizeSlider.value = clockSize.toString();
+  initCanvas();
+  updateCachedTimezone();
+  renderTimezones();
+  updateUILanguage();
+  animate();
+}

@@ -418,7 +418,7 @@ function drawClock(date: Date): void {
     displayYear = tzTime.year;
     displayMonth = tzTime.month;
     displayDate = tzTime.date;
-    displayWeekday = date.getDay(); // weekday needs timezone-specific calc but we approximate
+    displayWeekday = tzTime.weekday;
     ms = date.getMilliseconds();
   }
 

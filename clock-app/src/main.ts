@@ -119,6 +119,8 @@ const clockOnlyBtn = getElementByIdSafe('clock-only-btn') as HTMLButtonElement |
 const timezoneDisplay = getElementByIdSafe('timezone-display') as HTMLDivElement | null;
 const clockOnlyHint = getElementByIdSafe('clock-only-hint') as HTMLDivElement | null;
 const tabNav = getElementByIdSafe('tab-nav') as HTMLDivElement | null;
+const digitalDatetime = getElementByIdSafe('digital-datetime') as HTMLDivElement | null;
+const clockPanelDesc = getElementByIdSafe('clock-panel-desc') as HTMLParagraphElement | null;
 
 // ---- Compatibility: querySelectorAll may return NodeList, iterate safely ----
 const tabBtns = typeof document !== 'undefined' ? document.querySelectorAll('.tab-btn') : [];
@@ -491,10 +493,31 @@ function drawClock(date: Date): void {
   // Update timezone display using cached lookup
   if (selectedTimezone === 'local') {
     if (timezoneDisplay) timezoneDisplay.textContent = t('localTimeLabel');
+    if (clockPanelDesc) clockPanelDesc.textContent = t('clockPanelInfo');
   } else {
     if (timezoneDisplay && cachedSelectedTz) {
       timezoneDisplay.textContent = t('timezoneDisplayLabel') + ' ' + getTimezoneName(cachedSelectedTz.name) + ' (' + cachedSelectedTz.offset + ')';
     }
+    if (clockPanelDesc && cachedSelectedTz) {
+      clockPanelDesc.textContent = t('timezoneDisplayLabel') + ' ' + getTimezoneName(cachedSelectedTz.name);
+    }
+  }
+
+  // Update digital date/time display
+  if (digitalDatetime) {
+    var monthNames = tArray('monthNames');
+    var weekdayNames = tArray('weekdayNames');
+    var datePart = weekdayNames[displayWeekday] || '';
+    var monthPart = monthNames[displayMonth] || String(displayMonth + 1);
+    var timeStr;
+    if (is24Hour) {
+      timeStr = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+    } else {
+      var hour12 = hours % 12 || 12;
+      var ampm = hours >= 12 ? 'PM' : 'AM';
+      timeStr = String(hour12).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0') + ' ' + ampm;
+    }
+    digitalDatetime.textContent = displayYear + ' ' + monthPart + ' ' + displayDate + ' ' + datePart + '  ' + timeStr;
   }
 }
 

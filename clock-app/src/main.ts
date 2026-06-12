@@ -25,11 +25,17 @@ let cachedCanvasSize: number = 0;
 let clockOnlyMode: boolean = false;
 
 // ---- Compatibility: Polyfill for Map (very old browsers) ----
+// @ts-ignore: Polyfill for old browsers
 var MapPolyfill = typeof Map !== 'undefined' ? Map : function() {
-  var data = {};
-  this.has = function(k) { return Object.prototype.hasOwnProperty.call(data, k); };
-  this.get = function(k) { return this.has(k) ? data[k] : undefined; };
-  this.set = function(k, v) { data[k] = v; return this; };
+  // @ts-ignore: Polyfill for old browsers
+  var data: Record<string, any> = {};
+  // @ts-ignore: Polyfill for old browsers
+  this.has = function(k: string) { return Object.prototype.hasOwnProperty.call(data, k); };
+  // @ts-ignore: Polyfill for old browsers
+  this.get = function(k: string) { return this.has(k) ? data[k] : undefined; };
+  // @ts-ignore: Polyfill for old browsers
+  this.set = function(k: string, v: any) { data[k] = v; return this; };
+  // @ts-ignore: Polyfill for old browsers
   this.clear = function() { for (var key in data) delete data[key]; };
 };
 
@@ -45,8 +51,12 @@ if (!String.prototype.padStart) {
 }
 
 // Cached Intl formatters for performance (use polyfilled Map)
+// @ts-ignore: Polyfill for old browsers
 var intlFormatterCache = new MapPolyfill();
+// @ts-ignore: Polyfill for old browsers
 var timezoneListFormatterCache = new MapPolyfill();
+// @ts-ignore: Polyfill for old browsers
+var clockTimezoneFormatterCache = new MapPolyfill();
 
 function getClockIntlFormatter(timezone: string): Intl.DateTimeFormat {
   var key = timezone + '_clock';
@@ -94,42 +104,42 @@ let countdownRemaining: number = 0;
 let countdownInterval: number | null = null;
 
 // ---- Compatibility: Safe DOM element retrieval ----
-function getElementByIdSafe(id: string, tag: string): HTMLElement {
+function getElementByIdSafe(id: string): HTMLElement | null {
   var el = document.getElementById(id);
-  return el || null;
+  return el;
 }
 
 // DOM Elements
-const canvas = getElementByIdSafe('clock-canvas', 'canvas');
+const canvas = getElementByIdSafe('clock-canvas') as HTMLCanvasElement | null;
 const ctx = canvas ? canvas.getContext('2d') : null;
-const themeBtn = getElementByIdSafe('theme-btn', 'button');
-const formatBtn = getElementByIdSafe('format-btn', 'button');
-const langBtn = getElementByIdSafe('lang-btn', 'button');
-const clockOnlyBtn = getElementByIdSafe('clock-only-btn', 'button');
-const timezoneDisplay = getElementByIdSafe('timezone-display', 'div');
-const clockOnlyHint = getElementByIdSafe('clock-only-hint', 'div');
-const tabNav = getElementByIdSafe('tab-nav', 'nav');
+const themeBtn = getElementByIdSafe('theme-btn') as HTMLButtonElement | null;
+const formatBtn = getElementByIdSafe('format-btn') as HTMLButtonElement | null;
+const langBtn = getElementByIdSafe('lang-btn') as HTMLButtonElement | null;
+const clockOnlyBtn = getElementByIdSafe('clock-only-btn') as HTMLButtonElement | null;
+const timezoneDisplay = getElementByIdSafe('timezone-display') as HTMLDivElement | null;
+const clockOnlyHint = getElementByIdSafe('clock-only-hint') as HTMLDivElement | null;
+const tabNav = getElementByIdSafe('tab-nav') as HTMLDivElement | null;
 
 // ---- Compatibility: querySelectorAll may return NodeList, iterate safely ----
 const tabBtns = typeof document !== 'undefined' ? document.querySelectorAll('.tab-btn') : [];
 const panels = typeof document !== 'undefined' ? document.querySelectorAll('.panel') : [];
 
-const sizeSlider = getElementByIdSafe('clock-size-slider', 'input');
+const sizeSlider = getElementByIdSafe('clock-size-slider') as HTMLInputElement | null;
 
 // Stopwatch elements
-const swDisplay = getElementByIdSafe('stopwatch-display', 'div');
-const swStartBtn = getElementByIdSafe('sw-start', 'button');
-const swLapBtn = getElementByIdSafe('sw-lap', 'button');
-const swResetBtn = getElementByIdSafe('sw-reset', 'button');
-const lapList = getElementByIdSafe('lap-list', 'div');
+const swDisplay = getElementByIdSafe('stopwatch-display') as HTMLDivElement | null;
+const swStartBtn = getElementByIdSafe('sw-start') as HTMLButtonElement | null;
+const swLapBtn = getElementByIdSafe('sw-lap') as HTMLButtonElement | null;
+const swResetBtn = getElementByIdSafe('sw-reset') as HTMLButtonElement | null;
+const lapList = getElementByIdSafe('lap-list') as HTMLDivElement | null;
 
 // Countdown elements
-const cdDisplay = getElementByIdSafe('countdown-display', 'div');
-const cdHoursInput = getElementByIdSafe('cd-hours', 'input');
-const cdMinutesInput = getElementByIdSafe('cd-minutes', 'input');
-const cdSecondsInput = getElementByIdSafe('cd-seconds', 'input');
-const cdStartBtn = getElementByIdSafe('cd-start', 'button');
-const cdResetBtn = getElementByIdSafe('cd-reset', 'button');
+const cdDisplay = getElementByIdSafe('countdown-display') as HTMLDivElement | null;
+const cdHoursInput = getElementByIdSafe('cd-hours') as HTMLInputElement | null;
+const cdMinutesInput = getElementByIdSafe('cd-minutes') as HTMLInputElement | null;
+const cdSecondsInput = getElementByIdSafe('cd-seconds') as HTMLInputElement | null;
+const cdStartBtn = getElementByIdSafe('cd-start') as HTMLButtonElement | null;
+const cdResetBtn = getElementByIdSafe('cd-reset') as HTMLButtonElement | null;
 
 // Timezone data
 const timezoneNames = {
@@ -166,6 +176,7 @@ const timezones = [
 
 function getTimezoneName(zone: string): string {
   var lang = getLanguage();
+  // @ts-ignore: zone is a valid key
   var zoneNames = timezoneNames[zone];
   if (zoneNames) {
     if (zoneNames[lang]) return zoneNames[lang];
@@ -253,7 +264,7 @@ function initCanvas(): void {
 let cachedSelectedTz: TimezoneInfo | undefined;
 
 function updateCachedTimezone(): void {
-  cachedSelectedTz = null;
+  cachedSelectedTz = undefined;
   for (var i = 0; i < timezones.length; i++) {
     if (timezones[i].zone === selectedTimezone) {
       cachedSelectedTz = timezones[i];
@@ -262,9 +273,26 @@ function updateCachedTimezone(): void {
   }
 }
 
+// Get a cached formatter for a specific timezone component
+function getCachedTzFormatter(timezone: string, option: string): Intl.DateTimeFormat {
+  var key = timezone + '_' + option;
+  if (!clockTimezoneFormatterCache.has(key)) {
+    var opts: Intl.DateTimeFormatOptions = { timeZone: timezone };
+    if (option === 'year') opts.year = 'numeric';
+    else if (option === 'month') opts.month = '2-digit';
+    else if (option === 'day') opts.day = '2-digit';
+    else if (option === 'weekday') opts.weekday = 'short';
+    else if (option === 'hour') { opts.hour = '2-digit'; opts.hour12 = false; }
+    else if (option === 'minute') opts.minute = '2-digit';
+    else if (option === 'second') opts.second = '2-digit';
+    clockTimezoneFormatterCache.set(key, new Intl.DateTimeFormat('en-US', opts));
+  }
+  return clockTimezoneFormatterCache.get(key);
+}
+
 // ---- Compatibility: Safe parse of timezone time without formatToParts ----
 // formatToParts is NOT supported in older browsers (iOS < 10, old Android WebView)
-// Use toLocaleString and manual parsing instead
+// Use individual Intl.DateTimeFormat formatters for each component (cached for performance)
 function getTimeInTimezone(date: Date, timezone: string) {
   var result = {
     hours: date.getHours(),
@@ -277,33 +305,24 @@ function getTimeInTimezone(date: Date, timezone: string) {
   };
 
   try {
-    // Get the time as a string in the target timezone using ISO format
-    var tzString = date.toLocaleString('en-CA', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
+    // Use cached formatters for each time component
+    result.year = parseInt(getCachedTzFormatter(timezone, 'year').format(date), 10);
+    result.month = parseInt(getCachedTzFormatter(timezone, 'month').format(date), 10) - 1;
+    result.date = parseInt(getCachedTzFormatter(timezone, 'day').format(date), 10);
+    result.hours = parseInt(getCachedTzFormatter(timezone, 'hour').format(date), 10);
+    result.minutes = parseInt(getCachedTzFormatter(timezone, 'minute').format(date), 10);
+    result.seconds = parseInt(getCachedTzFormatter(timezone, 'second').format(date), 10);
 
-    // Parse "MM/DD/YYYY HH:mm:ss" format
-    var dateParts = tzString.split(' ')[0].split('/');
-    var timeParts = tzString.split(' ')[1].split(':');
-
-    if (dateParts.length === 3 && timeParts.length === 3) {
-      result.year = parseInt(dateParts[0], 10);
-      result.month = parseInt(dateParts[1], 10) - 1;
-      result.date = parseInt(dateParts[2], 10);
-      result.hours = parseInt(timeParts[0], 10);
-      result.minutes = parseInt(timeParts[1], 10);
-      result.seconds = parseInt(timeParts[2], 10);
+    // Map weekday short name to day index
+    var days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    var weekdayStr = getCachedTzFormatter(timezone, 'weekday').format(date).toLowerCase().slice(0, 3);
+    var weekdayIdx = days.indexOf(weekdayStr);
+    if (weekdayIdx >= 0) {
+      result.weekday = weekdayIdx;
     }
   } catch (e) {
     // Fallback: use local time if timezone conversion fails
-    console.warn('Timezone conversion failed, using local time');
+    console.warn('Timezone conversion failed, using local time:', e);
   }
 
   return result;
@@ -705,9 +724,9 @@ function updateCountdown(): void {
 function startCountdown(): void {
   if (!countdownRunning) {
     if (countdownRemaining <= 0) {
-      var h = parseInt(cdHoursInput.value, 10) || 0;
-      var m = parseInt(cdMinutesInput.value, 10) || 0;
-      var s = parseInt(cdSecondsInput.value, 10) || 0;
+      var h = cdHoursInput ? (parseInt(cdHoursInput.value, 10) || 0) : 0;
+      var m = cdMinutesInput ? (parseInt(cdMinutesInput.value, 10) || 0) : 0;
+      var s = cdSecondsInput ? (parseInt(cdSecondsInput.value, 10) || 0) : 0;
       countdownTotal = (h * 3600 + m * 60 + s) * 1000;
       countdownRemaining = countdownTotal;
 
@@ -812,7 +831,8 @@ window.addEventListener('resize', function(): void {
 function updateUILanguage(): void {
   document.title = t('pageTitle');
 
-  var langMap = { zh: 'zh-CN', en: 'en', ja: 'ja', ko: 'ko' };
+  // @ts-ignore: dynamic key access
+  var langMap: Record<string, string> = { zh: 'zh-CN', en: 'en', ja: 'ja', ko: 'ko' };
   var currentLang = getLanguage();
   document.documentElement.lang = langMap[currentLang] || 'zh-CN';
 
@@ -822,6 +842,7 @@ function updateUILanguage(): void {
     var el = i18nElements[i];
     var key = el.getAttribute('data-i18n');
     if (key) {
+      // @ts-ignore: dynamic i18n key
       var translation = t(key);
       if (el instanceof HTMLButtonElement || el instanceof HTMLLabelElement || el instanceof HTMLParagraphElement || el instanceof HTMLHeadingElement) {
         el.textContent = translation;

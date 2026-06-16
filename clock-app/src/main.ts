@@ -1,5 +1,5 @@
 // Type definitions
-import { t, tArray, setLanguage, getLanguage, loadLanguage, languageIcons, getNextLanguage } from './i18n';
+import { t, tArray, setLanguage, getLanguage, loadLanguage, languageIcons, getNextLanguage, type Translations } from './i18n';
 
 interface ThemeConfig {
   bg: string;
@@ -289,6 +289,39 @@ function getTimezoneName(zone: string): string {
 
 // ---- Forward declaration for switchTab (called before definition) ----
 let switchTabFn: ((tab: string) => void) | null = null;
+
+// Apply translations to all elements with data-i18n attribute
+function applyLanguage(): void {
+  var lang = getLanguage();
+  var elements = document.querySelectorAll('[data-i18n]');
+  for (var i = 0; i < elements.length; i++) {
+    var key = elements[i].getAttribute('data-i18n');
+    if (key) {
+      var val = t(key as keyof Translations);
+      if (val) {
+        elements[i].textContent = val;
+      }
+    }
+  }
+  // Update page title
+  document.title = t('pageTitle');
+  // Update lang button icon
+  if (langBtn) {
+    var icons = languageIcons;
+    langBtn.textContent = icons[lang] || '🌐';
+    langBtn.title = t('languageToggleTitle');
+  }
+}
+
+// Language toggle button
+if (langBtn) {
+  langBtn.addEventListener('click', function(): void {
+    var nextLang = getNextLanguage();
+    setLanguage(nextLang);
+    applyLanguage();
+    renderTimezones();
+  });
+}
 
 // Load saved preferences from localStorage
 function loadPreferences(): void {
@@ -1015,7 +1048,9 @@ function renderTimezones(): void {
 }
 
 // Initialize and start
+loadLanguage();
 loadPreferences();
+applyLanguage();
 initAudioOnFirstInteraction();
 updateCachedTimezone();
 initCanvas();

@@ -2,6 +2,10 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   root: '.',
+  server: {
+    host: 'localhost',
+    strictPort: true,
+  },
   build: {
     outDir: 'dist',
     minify: 'esbuild',

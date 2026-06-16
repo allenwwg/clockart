@@ -52,6 +52,11 @@ export interface Translations {
   clockOnlyTitle: string;
   clockOnlyExitHint: string;
 
+  // Sound
+  soundToggleTitle: string;
+  soundEnabled: string;
+  soundDisabled: string;
+
   // Date display
   monthNames: string[];
   weekdayNames: string[];
@@ -96,6 +101,9 @@ const translations: Record<string, Translations> = {
     languageToggleTitle: '切换语言',
     clockOnlyTitle: '仅显示圆形时钟',
     clockOnlyExitHint: '按 ESC 键或双击时钟退出此模式',
+    soundToggleTitle: '切换声音',
+    soundEnabled: '声音已开启',
+    soundDisabled: '声音已关闭',
     monthNames: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
     weekdayNames: ['日','一','二','三','四','五','六'],
   },
@@ -137,6 +145,9 @@ const translations: Record<string, Translations> = {
     languageToggleTitle: 'Toggle language',
     clockOnlyTitle: 'Clock Only Mode',
     clockOnlyExitHint: 'Press ESC or double-click clock to exit',
+    soundToggleTitle: 'Toggle Sound',
+    soundEnabled: 'Sound enabled',
+    soundDisabled: 'Sound disabled',
     monthNames: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
     weekdayNames: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
   },
@@ -178,6 +189,9 @@ const translations: Record<string, Translations> = {
     languageToggleTitle: '言語切替',
     clockOnlyTitle: '時計のみ表示',
     clockOnlyExitHint: 'ESC キーまたは時計をダブルクリックして退出',
+    soundToggleTitle: '音声切替',
+    soundEnabled: '音声オン',
+    soundDisabled: '音声オフ',
     monthNames: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
     weekdayNames: ['日','月','火','水','木','金','土'],
   },
@@ -219,6 +233,9 @@ const translations: Record<string, Translations> = {
     languageToggleTitle: '언어 전환',
     clockOnlyTitle: '시계만 표시',
     clockOnlyExitHint: 'ESC 키 또는 시계 더블클릭하여 나가기',
+    soundToggleTitle: '소리 전환',
+    soundEnabled: '소리 켜짐',
+    soundDisabled: '소리 꺼짐',
     monthNames: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
     weekdayNames: ['일','월','화','수','목','금','토'],
   },

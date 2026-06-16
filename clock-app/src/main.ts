@@ -23,6 +23,99 @@ let selectedTimezone: string = 'local';
 let clockSize: number = 480;
 let cachedCanvasSize: number = 0;
 let clockOnlyMode: boolean = false;
+let soundEnabled: boolean = false;
+
+// ---- Web Audio API Sound Engine ----
+let audioContext: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
+  if (!audioContext) {
+    try {
+      var AC = window.AudioContext || (window as any).webkitAudioContext;
+      if (AC) {
+        audioContext = new AC();
+      }
+    } catch (e) {
+      console.warn('Web Audio API not supported:', e);
+      return null;
+    }
+  }
+  return audioContext;
+}
+
+// Play a simple tone beep
+function playTone(frequency: number, duration: number, volume: number, type: string = 'sine'): void {
+  if (!soundEnabled) return;
+  var ctx = getAudioContext();
+  if (!ctx) return;
+
+  // Resume context if suspended (browser autoplay policy)
+  if (ctx.state === 'suspended') {
+    ctx.resume();
+  }
+
+  var oscillator = ctx.createOscillator();
+  var gainNode = ctx.createGain();
+
+  oscillator.type = type as OscillatorType;
+  oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+
+  gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+  oscillator.connect(gainNode);
+  gainNode.connect(ctx.destination);
+
+  oscillator.start(ctx.currentTime);
+  oscillator.stop(ctx.currentTime + duration);
+}
+
+// Clock tick sound - short, soft click
+function playTickSound(): void {
+  if (!soundEnabled) return;
+  playTone(800, 0.03, 0.06, 'square');
+}
+
+// Hourly chime - 3 pleasant ascending tones
+function playHourlyChime(): void {
+  if (!soundEnabled) return;
+  var ctx = getAudioContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+
+  playTone(523.25, 0.3, 0.15, 'sine');
+  setTimeout(function() { playTone(659.25, 0.3, 0.15, 'sine'); }, 200);
+  setTimeout(function() { playTone(783.99, 0.5, 0.15, 'sine'); }, 400);
+}
+
+// Countdown finish alarm - attention-grabbing sequence
+function playCountdownAlarm(): void {
+  if (!soundEnabled) return;
+  var ctx = getAudioContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+
+  for (var i = 0; i < 5; i++) {
+    (function(index: number) {
+      setTimeout(function() {
+        playTone(1000, 0.15, 0.2, 'square');
+      }, index * 200);
+    })(i);
+  }
+  setTimeout(function() {
+    playTone(880, 0.8, 0.2, 'sine');
+  }, 1200);
+}
+
+// Stopwatch lap sound - short pleasant blip
+function playLapSound(): void {
+  if (!soundEnabled) return;
+  playTone(600, 0.08, 0.1, 'sine');
+}
+
+// Track last second and last hour for sound triggers
+let lastSecond: number = -1;
+let lastHour: number = -1;
 
 // ---- Compatibility: Polyfill for Map (very old browsers) ----
 // @ts-ignore: Polyfill for old browsers
@@ -116,6 +209,7 @@ const themeBtn = getElementByIdSafe('theme-btn') as HTMLButtonElement | null;
 const formatBtn = getElementByIdSafe('format-btn') as HTMLButtonElement | null;
 const langBtn = getElementByIdSafe('lang-btn') as HTMLButtonElement | null;
 const clockOnlyBtn = getElementByIdSafe('clock-only-btn') as HTMLButtonElement | null;
+const soundBtn = getElementByIdSafe('sound-btn') as HTMLButtonElement | null;
 const timezoneDisplay = getElementByIdSafe('timezone-display') as HTMLDivElement | null;
 const clockOnlyHint = getElementByIdSafe('clock-only-hint') as HTMLDivElement | null;
 const tabNav = getElementByIdSafe('tab-nav') as HTMLDivElement | null;
@@ -187,6 +281,9 @@ function getTimezoneName(zone: string): string {
   return zone;
 }
 
+// ---- Forward declaration for switchTab (called before definition) ----
+let switchTabFn: ((tab: string) => void) | null = null;
+
 // Load saved preferences from localStorage
 function loadPreferences(): void {
   var savedTheme = localStorage.getItem('clock-theme');
@@ -221,14 +318,24 @@ function loadPreferences(): void {
   }
 
   var savedTab = localStorage.getItem('clock-tab');
-  if (savedTab) {
-    switchTab(savedTab);
+  if (savedTab && switchTabFn) {
+    switchTabFn(savedTab);
   }
 
   var savedClockOnly = localStorage.getItem('clock-only-mode');
   if (savedClockOnly) {
     clockOnlyMode = savedClockOnly === 'true';
     applyClockOnlyMode();
+  }
+
+  // Load sound preference
+  var savedSound = localStorage.getItem('clock-sound');
+  if (savedSound) {
+    soundEnabled = savedSound === 'true';
+    if (soundBtn) {
+      soundBtn.textContent = soundEnabled ? '\uD83D\uDD14' : '\uD83D\uDD07';
+      soundBtn.title = t('soundToggleTitle');
+    }
   }
 }
 
@@ -293,8 +400,6 @@ function getCachedTzFormatter(timezone: string, option: string): Intl.DateTimeFo
 }
 
 // ---- Compatibility: Safe parse of timezone time without formatToParts ----
-// formatToParts is NOT supported in older browsers (iOS < 10, old Android WebView)
-// Use individual Intl.DateTimeFormat formatters for each component (cached for performance)
 function getTimeInTimezone(date: Date, timezone: string) {
   var result = {
     hours: date.getHours(),
@@ -307,7 +412,6 @@ function getTimeInTimezone(date: Date, timezone: string) {
   };
 
   try {
-    // Use cached formatters for each time component
     result.year = parseInt(getCachedTzFormatter(timezone, 'year').format(date), 10);
     result.month = parseInt(getCachedTzFormatter(timezone, 'month').format(date), 10) - 1;
     result.date = parseInt(getCachedTzFormatter(timezone, 'day').format(date), 10);
@@ -315,7 +419,6 @@ function getTimeInTimezone(date: Date, timezone: string) {
     result.minutes = parseInt(getCachedTzFormatter(timezone, 'minute').format(date), 10);
     result.seconds = parseInt(getCachedTzFormatter(timezone, 'second').format(date), 10);
 
-    // Map weekday short name to day index
     var days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
     var weekdayStr = getCachedTzFormatter(timezone, 'weekday').format(date).toLowerCase().slice(0, 3);
     var weekdayIdx = days.indexOf(weekdayStr);
@@ -323,7 +426,6 @@ function getTimeInTimezone(date: Date, timezone: string) {
       result.weekday = weekdayIdx;
     }
   } catch (e) {
-    // Fallback: use local time if timezone conversion fails
     console.warn('Timezone conversion failed, using local time:', e);
   }
 
@@ -422,6 +524,18 @@ function drawClock(date: Date): void {
     ms = date.getMilliseconds();
   }
 
+  // ---- Sound: Tick on each new second ----
+  if (seconds !== lastSecond) {
+    lastSecond = seconds;
+    playTickSound();
+
+    // ---- Sound: Hourly chime when minute is 0 and second is 0 ----
+    if (minutes === 0 && seconds === 0 && hours !== lastHour) {
+      lastHour = hours;
+      playHourlyChime();
+    }
+  }
+
   // Calculate angles
   var secondAngle = ((seconds + ms / 1000) * Math.PI) / 30 - Math.PI / 2;
   var minuteAngle = ((minutes + seconds / 60) * Math.PI) / 30 - Math.PI / 2;
@@ -505,8 +619,8 @@ function drawClock(date: Date): void {
 
   // Update digital date/time display
   if (digitalDatetime) {
-    var monthNames = tArray('monthNames');
-    var weekdayNames = tArray('weekdayNames');
+    monthNames = tArray('monthNames');
+    weekdayNames = tArray('weekdayNames');
     var datePart = weekdayNames[displayWeekday] || '';
     var monthPart = monthNames[displayMonth] || String(displayMonth + 1);
     var timeStr;
@@ -574,7 +688,6 @@ function applyClockOnlyMode(): void {
     if (header) header.style.display = 'none';
     if (timezoneDisplay) timezoneDisplay.style.display = 'none';
     if (tabNav) tabNav.style.display = 'none';
-    // ---- Compatibility: NodeList forEach may not exist ----
     for (var i = 0; i < panels.length; i++) {
       panels[i].classList.remove('active');
     }
@@ -623,6 +736,27 @@ if (canvas) {
   });
 }
 
+// ---- Sound toggle button ----
+if (soundBtn) {
+  soundBtn.addEventListener('click', function(): void {
+    soundEnabled = !soundEnabled;
+    soundBtn.textContent = soundEnabled ? '\uD83D\uDD14' : '\uD83D\uDD07';
+    localStorage.setItem('clock-sound', soundEnabled.toString());
+
+    // Init audio context on first click (browser autoplay policy)
+    getAudioContext();
+
+    // Show hint
+    if (clockOnlyHint) {
+      clockOnlyHint.textContent = soundEnabled ? t('soundEnabled') : t('soundDisabled');
+      clockOnlyHint.style.display = 'block';
+      setTimeout(function() {
+        if (clockOnlyHint) clockOnlyHint.style.display = 'none';
+      }, 1500);
+    }
+  });
+}
+
 // Theme toggle
 if (themeBtn) {
   themeBtn.addEventListener('click', function(): void {
@@ -656,7 +790,6 @@ function switchTab(tab: string): void {
   for (var j = 0; j < panels.length; j++) {
     panels[j].classList.remove('active');
   }
-  // Find the target button
   for (i = 0; i < tabBtns.length; i++) {
     if (tabBtns[i].getAttribute('data-tab') === tab) {
       tabBtns[i].classList.add('active');
@@ -666,6 +799,9 @@ function switchTab(tab: string): void {
   var panel = document.getElementById(tab + '-panel');
   if (panel) panel.classList.add('active');
 }
+
+// Assign switchTab to forward reference
+switchTabFn = switchTab;
 
 for (var btnIdx = 0; btnIdx < tabBtns.length; btnIdx++) {
   (function(btn) {
@@ -712,6 +848,10 @@ function resetStopwatch(): void {
 
 function recordLap(): void {
   if (!stopwatchRunning) return;
+
+  // Play lap sound
+  playLapSound();
+
   lapCount++;
   var elapsed = (Date.now() - stopwatchStartTime + stopwatchElapsed);
   var item = document.createElement('div');
@@ -735,6 +875,10 @@ function updateCountdown(): void {
     if (cdDisplay) cdDisplay.textContent = '00:00:00';
 
     if (cdDisplay) cdDisplay.style.color = '#e74c3c';
+
+    // Play countdown alarm sound
+    playCountdownAlarm();
+
     setTimeout(function() {
       if (cdDisplay) cdDisplay.style.color = '';
       alert(t('cdAlert'));
@@ -823,7 +967,6 @@ function renderTimezones(): void {
       '</div>' +
       '<div class="timezone-time">' + timeStr + '</div>';
 
-    // Closure to capture tz in loop
     (function(timezoneData) {
       item.addEventListener('click', function(): void {
         selectedTimezone = timezoneData.zone;
@@ -837,104 +980,23 @@ function renderTimezones(): void {
   }
 }
 
+// Initialize and start
+loadPreferences();
+updateCachedTimezone();
+initCanvas();
+renderTimezones();
+animate();
+
 // Update timezone list every second
 setInterval(renderTimezones, 1000);
 
-// Handle window resize with debounce
-let resizeTimer: number | null = null;
+// Handle window resize
 window.addEventListener('resize', function(): void {
-  if (resizeTimer) cancelAnimationFrame(resizeTimer);
-  resizeTimer = requestAnimationFrame(function(): void {
-    initCanvas();
-    resizeTimer = null;
-  });
+  if (sizeSlider) sizeSlider.value = cachedCanvasSize.toString();
+  initCanvas();
 });
 
-// Update all UI text when language changes
-function updateUILanguage(): void {
-  document.title = t('pageTitle');
-
-  // @ts-ignore: dynamic key access
-  var langMap: Record<string, string> = { zh: 'zh-CN', en: 'en', ja: 'ja', ko: 'ko' };
-  var currentLang = getLanguage();
-  document.documentElement.lang = langMap[currentLang] || 'zh-CN';
-
-  // ---- Compatibility: NodeList forEach may not exist on older browsers ----
-  var i18nElements = document.querySelectorAll('[data-i18n]');
-  for (var i = 0; i < i18nElements.length; i++) {
-    var el = i18nElements[i];
-    var key = el.getAttribute('data-i18n');
-    if (key) {
-      // @ts-ignore: dynamic i18n key
-      var translation = t(key);
-      if (el instanceof HTMLButtonElement || el instanceof HTMLLabelElement || el instanceof HTMLParagraphElement || el instanceof HTMLHeadingElement) {
-        el.textContent = translation;
-      }
-    }
-  }
-
-  if (themeBtn) themeBtn.title = t('themeToggleTitle');
-  if (formatBtn) formatBtn.title = t('formatToggleTitle');
-  if (clockOnlyBtn) clockOnlyBtn.title = t('clockOnlyTitle');
-
-  if (langBtn) {
-    var iconMap = languageIcons;
-    langBtn.textContent = iconMap[currentLang] || '\uD83C\uDDE8\uD83C\uDDF3';
-    langBtn.title = t('languageToggleTitle') + ': ' + currentLang.toUpperCase();
-  }
-
-  if (swStartBtn) {
-    if (stopwatchRunning) {
-      swStartBtn.textContent = t('swPause');
-    } else {
-      swStartBtn.textContent = t('swStart');
-    }
-  }
-  if (swLapBtn) swLapBtn.textContent = t('swLap');
-  if (swResetBtn) swResetBtn.textContent = t('swReset');
-
-  if (cdStartBtn) {
-    if (countdownRunning) {
-      cdStartBtn.textContent = t('cdPause');
-    } else if (countdownRemaining < countdownTotal && countdownRemaining > 0) {
-      cdStartBtn.textContent = t('cdResume');
-    } else {
-      cdStartBtn.textContent = t('cdStart');
-    }
-  }
-  if (cdResetBtn) cdResetBtn.textContent = t('cdReset');
-
-  // Update lap list items
-  var lapItems = lapList ? lapList.querySelectorAll('.data-list-item') : [];
-  for (var j = 0; j < lapItems.length; j++) {
-    var lapText = lapItems[j].textContent;
-    if (lapText && lapText.indexOf(':') !== -1) {
-      var lastColon = lapText.lastIndexOf(':');
-      var timePart = lapText.substring(lastColon + 1);
-      lapItems[j].textContent = t('lapLabel') + ' ' + (j + 1) + ':' + timePart;
-    }
-  }
-
-  // Update timezone display text
-  if (selectedTimezone === 'local') {
-    if (timezoneDisplay) timezoneDisplay.textContent = t('localTimeLabel');
-  } else {
-    var foundTz = null;
-    for (var k = 0; k < timezones.length; k++) {
-      if (timezones[k].zone === selectedTimezone) {
-        foundTz = timezones[k];
-        break;
-      }
-    }
-    if (timezoneDisplay && foundTz) {
-      timezoneDisplay.textContent = t('timezoneDisplayLabel') + ' ' + getTimezoneName(foundTz.name) + ' (' + foundTz.offset + ')';
-    }
-  }
-
-  renderTimezones();
-}
-
-// Clock size slider handler
+// Size slider
 if (sizeSlider) {
   sizeSlider.addEventListener('input', function(): void {
     clockSize = parseInt(sizeSlider.value, 10);
@@ -943,38 +1005,3 @@ if (sizeSlider) {
   });
 }
 
-// Language toggle button handler
-if (langBtn) {
-  langBtn.addEventListener('click', function(): void {
-    setLanguage(getNextLanguage());
-    updateUILanguage();
-  });
-}
-
-// ---- Compatibility check: If canvas or ctx is null, show a fallback message ----
-function checkBrowserCompatibility(): boolean {
-  if (!canvas || !ctx) {
-    var app = document.getElementById('app');
-    if (app) {
-      var msg = document.createElement('p');
-      msg.style.color = 'red';
-      msg.style.textAlign = 'center';
-      msg.textContent = '您的浏览器不支持 Canvas，请升级浏览器以使用时钟功能。';
-      app.insertBefore(msg, app.children[1]);
-    }
-    return false;
-  }
-  return true;
-}
-
-// Initialize
-if (checkBrowserCompatibility()) {
-  loadLanguage();
-  loadPreferences();
-  if (sizeSlider) sizeSlider.value = clockSize.toString();
-  initCanvas();
-  updateCachedTimezone();
-  renderTimezones();
-  updateUILanguage();
-  animate();
-}

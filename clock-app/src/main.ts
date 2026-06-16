@@ -43,31 +43,39 @@ function getAudioContext(): AudioContext | null {
   return audioContext;
 }
 
+// Actually schedule and play a tone
+function scheduleTone(audioCtx: AudioContext, frequency: number, duration: number, volume: number, type: string): void {
+  var oscillator = audioCtx.createOscillator();
+  var gainNode = audioCtx.createGain();
+
+  oscillator.type = type as OscillatorType;
+  oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+
+  gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+
+  oscillator.start(audioCtx.currentTime);
+  oscillator.stop(audioCtx.currentTime + duration);
+}
+
 // Play a simple tone beep
 function playTone(frequency: number, duration: number, volume: number, type: string = 'sine'): void {
   if (!soundEnabled) return;
-  var ctx = getAudioContext();
-  if (!ctx) return;
+  var audioCtx = getAudioContext();
+  if (!audioCtx) return;
 
   // Resume context if suspended (browser autoplay policy)
-  if (ctx.state === 'suspended') {
-    ctx.resume();
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().then(function() {
+      // @ts-ignore: audioCtx is guaranteed non-null here since we checked above
+      scheduleTone(audioCtx, frequency, duration, volume, type);
+    });
+  } else {
+    scheduleTone(audioCtx, frequency, duration, volume, type);
   }
-
-  var oscillator = ctx.createOscillator();
-  var gainNode = ctx.createGain();
-
-  oscillator.type = type as OscillatorType;
-  oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
-
-  gainNode.gain.setValueAtTime(volume, ctx.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-
-  oscillator.connect(gainNode);
-  gainNode.connect(ctx.destination);
-
-  oscillator.start(ctx.currentTime);
-  oscillator.stop(ctx.currentTime + duration);
 }
 
 // Clock tick sound - short, soft click
@@ -743,8 +751,16 @@ if (soundBtn) {
     soundBtn.textContent = soundEnabled ? '\uD83D\uDD14' : '\uD83D\uDD07';
     localStorage.setItem('clock-sound', soundEnabled.toString());
 
-    // Init audio context on first click (browser autoplay policy)
-    getAudioContext();
+    // Init and resume audio context on first click (browser autoplay policy)
+    if (soundEnabled) {
+      var ctx = getAudioContext();
+      if (ctx) {
+        ctx.resume().then(function() {
+          // Audio context is now active - play a test tone to confirm
+          playTone(440, 0.15, 0.1, 'sine');
+        });
+      }
+    }
 
     // Show hint
     if (clockOnlyHint) {

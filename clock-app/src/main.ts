@@ -59,6 +59,12 @@ function scheduleTone(audioCtx: AudioContext, frequency: number, duration: numbe
 
   oscillator.start(audioCtx.currentTime);
   oscillator.stop(audioCtx.currentTime + duration);
+
+  // Clean up nodes after they finish to prevent memory leaks
+  oscillator.onended = function() {
+    oscillator.disconnect();
+    gainNode.disconnect();
+  };
 }
 
 // Play a simple tone beep
@@ -87,10 +93,6 @@ function playTickSound(): void {
 // Hourly chime - 3 pleasant ascending tones
 function playHourlyChime(): void {
   if (!soundEnabled) return;
-  var ctx = getAudioContext();
-  if (!ctx) return;
-  if (ctx.state === 'suspended') ctx.resume();
-
   playTone(523.25, 0.3, 0.15, 'sine');
   setTimeout(function() { playTone(659.25, 0.3, 0.15, 'sine'); }, 200);
   setTimeout(function() { playTone(783.99, 0.5, 0.15, 'sine'); }, 400);
@@ -99,10 +101,6 @@ function playHourlyChime(): void {
 // Countdown finish alarm - attention-grabbing sequence
 function playCountdownAlarm(): void {
   if (!soundEnabled) return;
-  var ctx = getAudioContext();
-  if (!ctx) return;
-  if (ctx.state === 'suspended') ctx.resume();
-
   for (var i = 0; i < 5; i++) {
     (function(index: number) {
       setTimeout(function() {
@@ -123,7 +121,7 @@ function playLapSound(): void {
 
 // Track last second and last hour for sound triggers
 let lastSecond: number = -1;
-let lastHour: number = -1;
+let lastHour: number = -2; // Start with invalid value to prevent hourly chime on page load
 
 // ---- Compatibility: Polyfill for Map (very old browsers) ----
 // @ts-ignore: Polyfill for old browsers
@@ -773,6 +771,25 @@ if (soundBtn) {
   });
 }
 
+// Resume AudioContext on first user interaction if sound is already enabled (from saved preferences)
+// This solves the browser autoplay policy issue where AudioContext starts suspended
+function initAudioOnFirstInteraction(): void {
+  if (!soundEnabled) return;
+  var events = ['click', 'keydown', 'touchstart', 'mousedown'];
+  function handleInteraction(): void {
+    var ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    for (var i = 0; i < events.length; i++) {
+      document.removeEventListener(events[i], handleInteraction);
+    }
+  }
+  for (var i = 0; i < events.length; i++) {
+    document.addEventListener(events[i], handleInteraction);
+  }
+}
+
 // Theme toggle
 if (themeBtn) {
   themeBtn.addEventListener('click', function(): void {
@@ -895,10 +912,11 @@ function updateCountdown(): void {
     // Play countdown alarm sound
     playCountdownAlarm();
 
+    // Wait for alarm to finish before showing alert (alarm takes ~2s total)
     setTimeout(function() {
       if (cdDisplay) cdDisplay.style.color = '';
       alert(t('cdAlert'));
-    }, 100);
+    }, 2500);
   } else {
     if (cdDisplay) cdDisplay.textContent = formatCountdown(countdownRemaining);
   }
@@ -998,6 +1016,7 @@ function renderTimezones(): void {
 
 // Initialize and start
 loadPreferences();
+initAudioOnFirstInteraction();
 updateCachedTimezone();
 initCanvas();
 renderTimezones();
